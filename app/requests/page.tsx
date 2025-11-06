@@ -157,10 +157,9 @@ export default async function RequestsPage() {
               Check the status of the jams you&apos;ve requested to join.
             </p>
           </div>
-          <OutgoingRequestsList requests={outgoingRequests} />
+          <OutgoingRequestsList requests={outgoingRequests} currentUserId={user.id} />
         </section>
       </div>
     </div>
   )
 }
-

@@ -209,6 +209,13 @@ CREATE POLICY "Hosts can update member status"
     jam_id IN (SELECT id FROM jams WHERE host_id = auth.uid())
   );
 
+CREATE POLICY "Users can cancel pending requests"
+  ON jam_members FOR DELETE
+  USING (
+    auth.uid() = user_id
+    AND status = 'pending'
+  );
+
 -- DMs policies
 CREATE POLICY "Users can view their DMs"
   ON dms FOR SELECT

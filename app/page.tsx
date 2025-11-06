@@ -5,6 +5,7 @@ import { SearchResultsPanel, type SearchResultEntry } from '@/components/SearchR
 import MapViewClient from '@/components/MapViewClient'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Jam, Profile } from '@/lib/types'
+import { toJam } from '@/lib/transformers'
 import type { Database } from '@/lib/database.types'
 
 export const dynamic = 'force-dynamic'
@@ -59,9 +60,12 @@ export default async function HomePage({ searchParams }: HomePageProps = {}) {
 
   const jamsPromise = buildJamsQuery(supabase, filters)
 
-  const { data: rawJams = [] } = await jamsPromise
+  const { data: jamRows } = await jamsPromise
+  const typedJams = (jamRows ?? [])
+    .map((row) => toJam(row))
+    .filter((jam): jam is Jam => jam !== null)
 
-  const jams = filterJams((rawJams as (Jam & { host?: any })[]) ?? [], filters)
+  const jams = filterJams(typedJams, filters)
   const searchResults = buildJamSearchResultEntries(jams, filters)
 
   const mapCenter = determineMapCenter(filters, jams)
@@ -196,7 +200,7 @@ function buildJamsQuery(
   return query
 }
 
-function filterJams(jams: (Jam & { host?: any })[], filters: ParsedFilters) {
+function filterJams(jams: Jam[], filters: ParsedFilters) {
   const { lat, lng, radiusMiles } = filters
   const radiusKm = milesToKilometers(radiusMiles)
 
@@ -213,15 +217,12 @@ function filterJams(jams: (Jam & { host?: any })[], filters: ParsedFilters) {
       if (distance > radiusKm) return null
       return { jam, distance }
     })
-    .filter((entry): entry is { jam: Jam & { host?: any }; distance: number } => entry !== null)
+    .filter((entry): entry is { jam: Jam; distance: number } => entry !== null)
     .sort((a, b) => a.distance - b.distance)
     .map((entry) => entry.jam)
 }
 
-function determineMapCenter(
-  filters: ParsedFilters,
-  jams: (Jam & { host?: any })[]
-) {
+function determineMapCenter(filters: ParsedFilters, jams: Jam[]) {
   if (filters.lat != null && filters.lng != null) {
     return [filters.lat, filters.lng] as [number, number]
   }
@@ -234,10 +235,7 @@ function determineMapCenter(
   return DEFAULT_MAP_CENTER
 }
 
-function buildJamSearchResultEntries(
-  jams: (Jam & { host?: Profile })[],
-  filters: ParsedFilters
-): SearchResultEntry[] {
+function buildJamSearchResultEntries(jams: Jam[], filters: ParsedFilters): SearchResultEntry[] {
   const entries: Array<{
     entry: SearchResultEntry
     distance: number

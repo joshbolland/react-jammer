@@ -1,4 +1,4 @@
-import { createSupabaseRouteClient } from '@/lib/supabase-server'
+import { createSupabaseRouteClient, createSupabaseAdminClient } from '@/lib/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
 import type { Database } from '@/lib/database.types'
 
@@ -27,6 +27,10 @@ export async function POST(
     return NextResponse.json({ error: 'Jam not found' }, { status: 404 })
   }
 
+  if (jam.host_id === session.user.id) {
+    return NextResponse.json({ error: 'Hosts cannot join their own jam' }, { status: 400 })
+  }
+
   // Check if already a member
   const { data: existing } = await supabase
     .from('jam_members')
@@ -37,6 +41,29 @@ export async function POST(
 
   if (existing) {
     return NextResponse.json({ error: 'Already a member' }, { status: 400 })
+  }
+
+  const maxAttendees =
+    typeof jam.max_attendees === 'number' && Number.isFinite(jam.max_attendees)
+      ? jam.max_attendees
+      : null
+
+  if (maxAttendees && maxAttendees > 0) {
+    const supabaseAdmin = createSupabaseAdminClient()
+    const { count: attendeeCount, error: countError } = await supabaseAdmin
+      .from('jam_members')
+      .select('id', { head: true, count: 'exact' })
+      .eq('jam_id', id)
+      .in('status', ['approved', 'pending'])
+
+    if (countError) {
+      console.error('Failed to count jam members before join:', countError)
+      return NextResponse.json({ error: 'Unable to join jam right now' }, { status: 500 })
+    }
+
+    if ((attendeeCount ?? 0) >= maxAttendees) {
+      return NextResponse.json({ error: 'Jam is at capacity' }, { status: 400 })
+    }
   }
 
   // Create join request

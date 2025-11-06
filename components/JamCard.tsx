@@ -84,7 +84,7 @@ function getJamAccent(instrument?: Instrument): JamAccent {
 }
 
 interface JamCardProps {
-  jam: Jam & { host?: any }
+  jam: Jam
 }
 
 export function JamCard({ jam }: JamCardProps) {

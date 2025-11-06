@@ -1,10 +1,11 @@
 'use client'
 
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { jamSchema } from '@/lib/validations'
 import { INSTRUMENTS } from '@/lib/types'
 import { useState, useRef } from 'react'
+import { DateTimePicker } from './DateTimePicker'
 // Simple address autocomplete using OpenStreetMap Nominatim API
 function useAddressAutocomplete() {
   const [query, setQuery] = useState('')
@@ -57,13 +58,14 @@ export function JamForm({ jam, onSuccess }: JamFormProps) {
     formState: { errors },
     watch,
     setValue,
+    control,
   } = useForm({
     resolver: zodResolver(jamSchema),
     defaultValues: jam
       ? {
         title: jam.title,
         description: jam.description || '',
-        jam_time: jam.jam_time ? new Date(jam.jam_time).toISOString().slice(0, 16) : '',
+        jam_time: jam.jam_time ? new Date(jam.jam_time).toISOString() : '',
         city: jam.city || '',
         country: jam.country || '',
         lat: jam.lat,
@@ -73,6 +75,7 @@ export function JamForm({ jam, onSuccess }: JamFormProps) {
         max_attendees: jam.max_attendees || 10,
       }
       : {
+        jam_time: '',
         address: '',
         desired_instruments: [],
         max_attendees: 10,
@@ -238,15 +241,18 @@ export function JamForm({ jam, onSuccess }: JamFormProps) {
         <label htmlFor="jam_time" className="block text-sm font-medium text-gray-700 mb-1">
           Date & Time *
         </label>
-        <input
-          id="jam_time"
-          type="datetime-local"
-          {...register('jam_time')}
-          className="input-field"
+        <Controller
+          name="jam_time"
+          control={control}
+          render={({ field: { value, onChange } }) => (
+            <DateTimePicker
+              id="jam_time"
+              value={value}
+              onChange={onChange}
+              error={errors.jam_time?.message as string | undefined}
+            />
+          )}
         />
-        {errors.jam_time && (
-          <p className="mt-1 text-sm text-red-600">{errors.jam_time.message as string}</p>
-        )}
       </div>
 
       {/* Hidden city/country/lat/lng fields (populated by address picker) */}
@@ -308,4 +314,3 @@ export function JamForm({ jam, onSuccess }: JamFormProps) {
     </form>
   )
 }
-

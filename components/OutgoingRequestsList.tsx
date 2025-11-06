@@ -1,5 +1,9 @@
+'use client'
+
 import Link from 'next/link'
 import { format } from 'date-fns'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface OutgoingRequest {
   jamId: string
@@ -30,15 +34,45 @@ function formatJamTime(jamTime: string | null) {
 
 export interface OutgoingRequestsListProps {
   requests: OutgoingRequest[]
+  currentUserId: string
 }
 
-export function OutgoingRequestsList({ requests }: OutgoingRequestsListProps) {
+export function OutgoingRequestsList({ requests, currentUserId }: OutgoingRequestsListProps) {
+  const router = useRouter()
+  const [cancellingJamId, setCancellingJamId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  const handleCancel = async (jamId: string) => {
+    setCancellingJamId(jamId)
+    setActionError(null)
+    try {
+      const response = await fetch(`/api/jams/${jamId}/members/${currentUserId}`, {
+        method: 'DELETE',
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        throw new Error(payload?.error ?? 'Failed to cancel request')
+      }
+      router.refresh()
+    } catch (error: any) {
+      setActionError(error.message ?? 'Failed to cancel request')
+    } finally {
+      setCancellingJamId(null)
+    }
+  }
+
   if (!requests.length) {
     return <p className="text-sm text-gray-600">You have not sent any requests yet.</p>
   }
 
   return (
     <div className="space-y-4">
+      {actionError && (
+        <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded px-3 py-2">
+          {actionError}
+        </p>
+      )}
+
       {requests.map((request) => {
         const formattedTime = formatJamTime(request.jamTime)
         const requestedDate = new Date(request.joinedAt)
@@ -69,9 +103,22 @@ export function OutgoingRequestsList({ requests }: OutgoingRequestsListProps) {
                 </p>
               )}
             </div>
-            <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded ${statusClasses(request.status)}`}>
-              {request.status}
-            </span>
+            {request.status === 'pending' ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleCancel(request.jamId)}
+                  disabled={cancellingJamId === request.jamId}
+                  className="px-3 py-1 text-xs font-medium rounded border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {cancellingJamId === request.jamId ? 'Cancelling…' : 'Cancel request'}
+                </button>
+              </div>
+            ) : (
+              <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded ${statusClasses(request.status)}`}>
+                {request.status}
+              </span>
+            )}
           </div>
         )
       })}
