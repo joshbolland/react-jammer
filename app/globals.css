@@ -1,0 +1,345 @@
+@import "leaflet/dist/leaflet.css";
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+@layer base {
+  :root {
+    --foreground-rgb: 0, 0, 0;
+    --background-start-rgb: 255, 255, 255;
+    --background-end-rgb: 255, 255, 255;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-full bg-gradient-to-r from-primary-500 to-primary-600 px-5 py-2 text-sm font-semibold text-white shadow-[0_18px_40px_-20px_rgba(112,66,255,0.65)] transition-all duration-200 hover:from-primary-500/90 hover:to-primary-600/90 hover:shadow-[0_20px_48px_-18px_rgba(112,66,255,0.7)] focus:outline-none focus:ring-2 focus:ring-primary-300 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-full border border-primary-100 bg-white/95 px-5 py-2 text-sm font-semibold text-primary-600 shadow-[0_14px_36px_-28px_rgba(112,66,255,0.45)] transition-all duration-200 hover:bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 focus:ring-offset-2;
+  }
+
+  .input-field {
+    @apply w-full rounded-2xl border border-slate-200/80 bg-white/95 px-4 py-2.5 text-sm font-medium text-slate-800 shadow-[0_14px_32px_-28px_rgba(71,64,156,0.15)] outline-none transition focus:border-primary-400 focus:ring-2 focus:ring-primary-300/70;
+  }
+
+  .card {
+    @apply rounded-[28px] border border-slate-200/80 bg-white/95 p-6 shadow-[0_32px_90px_-60px_rgba(79,70,200,0.25)];
+  }
+
+  .feature-chip {
+    @apply inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/75 sm:text-xs;
+  }
+
+  .feature-chip--light {
+    @apply border-primary-100/70 bg-white/95 text-primary-600 shadow-[0_10px_24px_-20px_rgba(112,66,255,0.4)];
+  }
+
+  .section-shell {
+    @apply rounded-3xl border border-white/70 bg-white/95 p-8 shadow-[0_40px_110px_-60px_rgba(15,23,42,0.5)] backdrop-blur;
+  }
+
+  .section-shell--light {
+    @apply border-slate-200/80 bg-white/95 shadow-[0_35px_90px_-65px_rgba(79,70,200,0.45)];
+  }
+
+  .filters-panel {
+    @apply rounded-[28px] border border-primary-100/80 bg-white px-6 py-7 shadow-[0_35px_90px_-60px_rgba(100,80,220,0.2)];
+  }
+
+  .filter-input {
+    @apply border-primary-100 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400 shadow-[0_12px_32px_-26px_rgba(112,66,255,0.28)] focus:border-primary-400 focus:ring-primary-400/50;
+  }
+
+  .tag-chip {
+    @apply inline-flex items-center rounded-full border px-3 py-1;
+  }
+
+  .jam-card {
+    @apply relative overflow-hidden rounded-[28px] border border-primary-100/70 bg-gradient-to-br from-white via-[#f5f2ff] to-[#f7faff] p-6 shadow-[0_45px_120px_-70px_rgba(97,76,200,0.45)] transition-all duration-300 ease-out;
+  }
+
+  .jam-card:hover {
+    @apply -translate-y-1 shadow-[0_65px_150px_-80px_rgba(90,70,200,0.6)];
+  }
+
+  .hero-underline {
+    position: absolute;
+    left: 0;
+    bottom: -0.85rem;
+    height: 0.35rem;
+    width: 100%;
+    border-radius: 9999px;
+    background-image: linear-gradient(90deg, rgba(214,197,255,0.6), rgba(250,232,165,0.8), rgba(214,197,255,0.5));
+    opacity: 0.85;
+    animation: heroPulse 2.8s ease-in-out infinite;
+  }
+
+  .hero-underline--light {
+    background-image: linear-gradient(90deg, rgba(110,72,255,0.35), rgba(253,215,138,0.55), rgba(110,72,255,0.3));
+    bottom: -0.75rem;
+    height: 0.3rem;
+  }
+
+  .search-input-breathe {
+    animation: searchBreathe 1s ease-in-out infinite;
+    box-shadow: 0 0 0 0 rgba(167, 130, 255, 0.35);
+  }
+
+  .search-caret-pulse {
+    animation: searchCaretPulse 0.9s ease-out;
+  }
+
+  .hero-waveform {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, rgba(167, 130, 255, 0.18), rgba(255, 255, 255, 0.18), rgba(255, 215, 165, 0.2), rgba(167, 130, 255, 0.18));
+    background-size: 200% 200%;
+    opacity: 0.6;
+    mask-image: radial-gradient(circle at 50% 35%, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.65) 50%, transparent 90%);
+    animation: heroWaveShift 18s ease-in-out infinite alternate;
+  }
+
+  .waveform-line {
+    position: absolute;
+    inset: 0;
+    width: 200%;
+    left: -50%;
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(167, 130, 255, 0.42),
+      rgba(167, 130, 255, 0.42) 12px,
+      rgba(255, 255, 255, 0.1) 12px,
+      rgba(255, 255, 255, 0.1) 24px
+    );
+    opacity: 0.75;
+    filter: blur(1px);
+    mask-image: radial-gradient(circle, rgba(0, 0, 0, 0.9) 0%, transparent 75%);
+    animation: waveformDrift 11s linear infinite;
+  }
+
+  .waveform-line::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.38) 50%, transparent 100%);
+    mix-blend-mode: screen;
+  }
+
+  .waveform-line--active {
+    animation-duration: 5s;
+    opacity: 0.95;
+  }
+
+  .map-ambient-wave {
+    position: absolute;
+    inset: -40%;
+    background: radial-gradient(circle at 20% 20%, rgba(167, 130, 255, 0.25), transparent 55%),
+      radial-gradient(circle at 80% 30%, rgba(255, 198, 125, 0.2), transparent 60%),
+      radial-gradient(circle at 50% 80%, rgba(104, 204, 255, 0.2), transparent 65%);
+    animation: mapAmbient 22s ease-in-out infinite alternate;
+    opacity: 0.7;
+  }
+
+  .map-heat {
+    position: absolute;
+    inset: -15%;
+    background: radial-gradient(circle at 30% 35%, rgba(167, 130, 255, 0.28), transparent 55%),
+      radial-gradient(circle at 70% 20%, rgba(255, 181, 120, 0.24), transparent 60%),
+      radial-gradient(circle at 55% 75%, rgba(104, 204, 255, 0.22), transparent 62%),
+      radial-gradient(circle at 15% 75%, rgba(255, 120, 184, 0.18), transparent 55%);
+    filter: blur(70px);
+    animation: mapHeatDrift 26s ease-in-out infinite alternate;
+  }
+
+  .map-tooltip {
+    background: rgba(255, 255, 255, 0.85);
+    color: #1f2937;
+    border-radius: 9999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    box-shadow: 0 18px 40px -26px rgba(15, 23, 42, 0.45);
+  }
+
+  .map-tooltip-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: center;
+  }
+
+  .map-tooltip-inner strong {
+    font-weight: 700;
+    letter-spacing: 0.1em;
+  }
+
+  .map-tooltip-inner span {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(79, 70, 229, 0.8);
+  }
+}
+
+@layer utilities {
+  .animate-hero-bloom {
+    animation: heroBloom 16s ease-in-out infinite alternate;
+  }
+
+  .animate-hero-float {
+    animation: heroFloat 18s ease-in-out infinite alternate;
+  }
+
+  .animate-hero-float-slow {
+    animation: heroFloatSlow 22s ease-in-out infinite alternate;
+  }
+}
+
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+}
+
+@keyframes heroPulse {
+  0% {
+    opacity: 0.65;
+    transform: scaleX(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0.65;
+    transform: scaleX(0.96);
+  }
+}
+
+@keyframes heroBloom {
+  0% {
+    transform: translateY(-45%) scale(1);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-30%) scale(1.2);
+    opacity: 0.75;
+  }
+}
+
+@keyframes heroFloat {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(20px, -30px, 0) scale(1.15);
+  }
+}
+
+@keyframes heroFloatSlow {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(-25px, 25px, 0) scale(1.1);
+  }
+}
+
+@keyframes mapPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.35;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+}
+
+.jam-marker {
+  animation: mapPulse 3.4s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+  stroke: rgba(138, 85, 255, 0.9);
+  stroke-width: 2;
+}
+
+.profile-marker {
+  animation: mapPulse 4.2s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+  stroke: rgba(251, 191, 36, 0.95);
+  stroke-width: 2;
+}
+
+@keyframes searchBreathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(167, 130, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 24px 6px rgba(167, 130, 255, 0.25);
+  }
+  75% {
+    box-shadow: 0 0 30px 8px rgba(255, 215, 165, 0.18);
+  }
+}
+
+@keyframes searchCaretPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(167, 130, 255, 0.35);
+  }
+  80% {
+    box-shadow: 0 0 30px 14px rgba(167, 130, 255, 0.15);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(167, 130, 255, 0);
+  }
+}
+
+@keyframes heroWaveShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes waveformDrift {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(50%);
+  }
+}
+
+@keyframes mapAmbient {
+  0% {
+    transform: translate3d(-5%, -5%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(5%, 3%, 0) scale(1.05);
+  }
+  100% {
+    transform: translate3d(-4%, 6%, 0) scale(1.08);
+  }
+}
+
+@keyframes mapHeatDrift {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  100% {
+    transform: rotate(8deg) scale(1.08);
+  }
+}
