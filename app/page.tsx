@@ -3,7 +3,8 @@ import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { SearchFilters } from '@/components/SearchFilters'
 import { SearchResultsPanel, type SearchResultEntry } from '@/components/SearchResultsPanel'
 import MapViewClient from '@/components/MapViewClient'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { CreateJamModal } from '@/components/CreateJamModal'
+import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
 import type { Jam, Profile } from '@/lib/types'
 import { toJam } from '@/lib/transformers'
 import type { Database } from '@/lib/database.types'
@@ -30,9 +31,21 @@ interface ParsedFilters {
   dateTo?: string
 }
 
+type JamSelectRow = Database['public']['Tables']['jams']['Row'] & {
+  host?: unknown
+  distance_km?: number | null
+}
+
+interface FetchJamsResult {
+  rows: JamSelectRow[]
+  distanceByJamIdKm: Record<string, number>
+  locationOptimized: boolean
+}
+
 const DEFAULT_RADIUS_MILES = 25
 const MILES_TO_KM = 1.60934
 const KM_TO_MILES = 1 / MILES_TO_KM
+let radiusRpcUnavailable = false
 
 export default async function HomePage({ searchParams }: HomePageProps = {}) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
@@ -58,15 +71,20 @@ export default async function HomePage({ searchParams }: HomePageProps = {}) {
     }
   }
 
-  const jamsPromise = buildJamsQuery(supabase, filters)
+  const {
+    rows: jamRows,
+    distanceByJamIdKm,
+    locationOptimized,
+  } = await fetchJamsForFilters(supabase, filters)
 
-  const { data: jamRows } = await jamsPromise
-  const typedJams = (jamRows ?? [])
-    .map((row) => toJam(row))
-    .filter((jam): jam is Jam => jam !== null)
+  const typedJams = jamRows.map((row) => toJam(row)).filter((jam): jam is Jam => jam !== null)
 
-  const jams = filterJams(typedJams, filters)
-  const searchResults = buildJamSearchResultEntries(jams, filters)
+  const jams = locationOptimized ? typedJams : filterJams(typedJams, filters)
+  const searchResults = buildJamSearchResultEntries(
+    jams,
+    filters,
+    locationOptimized ? distanceByJamIdKm : undefined
+  )
 
   const mapCenter = determineMapCenter(filters, jams)
 
@@ -96,10 +114,11 @@ export default async function HomePage({ searchParams }: HomePageProps = {}) {
                 Move around to see upcoming jams near you.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
-              <span className="inline-flex items-center bg-primary-100/60 px-3 py-1 text-primary-600">
-                {jams.length} Jams
-              </span>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <CreateJamModal variant="compact" />
+              <div className="flex items-center gap-2 rounded-full border border-white/60 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 shadow-[0_18px_40px_-25px_rgba(24,39,75,0.4)]">
+                <span className="text-primary-600">{jams.length} Jams</span>
+              </div>
             </div>
           </div>
           <div className="relative flex-1">
@@ -176,13 +195,14 @@ function buildJamsQuery(
     .gte('jam_time', new Date().toISOString())
     .limit(200)
 
+  const searchPattern = buildSearchPattern(filters.searchTerms)
+
   if (filters.instruments.length) {
     query = query.overlaps('desired_instruments', filters.instruments)
   }
 
-  if (filters.searchTerms.length) {
-    const likeTerm = `%${sanitizeLike(filters.searchTerms.join(' '))}%`
-    query = query.or(`title.ilike.${likeTerm},description.ilike.${likeTerm}`)
+  if (searchPattern) {
+    query = query.or(`title.ilike.${searchPattern},description.ilike.${searchPattern}`)
   }
 
   if (filters.dateFrom) {
@@ -198,6 +218,59 @@ function buildJamsQuery(
   }
 
   return query
+}
+
+async function fetchJamsForFilters(
+  supabase: SupabaseClient<Database>,
+  filters: ParsedFilters
+): Promise<FetchJamsResult> {
+  const distanceByJamIdKm: Record<string, number> = {}
+  const hasLocation = filters.lat != null && filters.lng != null
+  const searchPattern = buildSearchPattern(filters.searchTerms)
+
+  if (hasLocation && !radiusRpcUnavailable) {
+    const { data, error } = await supabase.rpc('search_jams_within_radius', {
+      p_lat: filters.lat!,
+      p_lng: filters.lng!,
+      p_radius_km: milesToKilometers(filters.radiusMiles),
+      p_instruments: filters.instruments.length ? filters.instruments : [],
+      p_search: searchPattern ?? null,
+      p_date_from: filters.dateFrom ?? null,
+      p_date_to: filters.dateTo ?? null,
+      p_limit: 200,
+    })
+
+    if (!error && data) {
+      for (const row of data) {
+        if (row.id && row.distance_km != null) {
+          distanceByJamIdKm[row.id] = row.distance_km
+        }
+      }
+
+      return {
+        rows: data as JamSelectRow[],
+        distanceByJamIdKm,
+        locationOptimized: true,
+      }
+    }
+
+    if (error && isRadiusRpcMissing(error)) {
+      radiusRpcUnavailable = true
+    } else if (error) {
+      console.error('Error fetching jams via radius RPC:', formatPostgrestError(error))
+    }
+  }
+
+  const { data, error } = await buildJamsQuery(supabase, filters)
+  if (error) {
+    console.error('Error loading jams:', formatPostgrestError(error))
+  }
+
+  return {
+    rows: ((data ?? []) as JamSelectRow[]) ?? [],
+    distanceByJamIdKm: {},
+    locationOptimized: false,
+  }
 }
 
 function filterJams(jams: Jam[], filters: ParsedFilters) {
@@ -235,7 +308,11 @@ function determineMapCenter(filters: ParsedFilters, jams: Jam[]) {
   return DEFAULT_MAP_CENTER
 }
 
-function buildJamSearchResultEntries(jams: Jam[], filters: ParsedFilters): SearchResultEntry[] {
+function buildJamSearchResultEntries(
+  jams: Jam[],
+  filters: ParsedFilters,
+  distanceOverridesKm?: Record<string, number>
+): SearchResultEntry[] {
   const entries: Array<{
     entry: SearchResultEntry
     distance: number
@@ -244,10 +321,13 @@ function buildJamSearchResultEntries(jams: Jam[], filters: ParsedFilters): Searc
   const { lat, lng } = filters
 
   for (const jam of jams) {
+    const overrideKm = distanceOverridesKm?.[jam.id]
     const distanceKm =
-      lat != null && lng != null && jam.lat != null && jam.lng != null
-        ? haversineDistanceKm(lat, lng, jam.lat, jam.lng)
-        : undefined
+      overrideKm != null
+        ? overrideKm
+        : lat != null && lng != null && jam.lat != null && jam.lng != null
+          ? haversineDistanceKm(lat, lng, jam.lat, jam.lng)
+          : undefined
     const distanceMiles = distanceKm != null ? kilometersToMiles(distanceKm) : undefined
     const entry: SearchResultEntry = {
       id: `jam-${jam.id}`,
@@ -308,6 +388,13 @@ function kilometersToMiles(kilometers: number) {
   return kilometers * KM_TO_MILES
 }
 
+function buildSearchPattern(searchTerms: string[]) {
+  if (!searchTerms.length) return undefined
+  const sanitized = sanitizeLike(searchTerms.join(' ')).trim()
+  if (!sanitized) return undefined
+  return `%${sanitized}%`
+}
+
 function formatLocation(city?: string | null, country?: string | null) {
   const parts = [city, country].filter(
     (part): part is string => Boolean(part && part.trim().length > 0)
@@ -330,4 +417,22 @@ function haversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
 
 function milesToKilometers(miles: number) {
   return miles * MILES_TO_KM
+}
+
+function isRadiusRpcMissing(error?: PostgrestError | null) {
+  if (!error) return false
+  if (error.code && ['42883', 'PGRST204', '0A000'].includes(error.code)) {
+    return true
+  }
+  const haystack = [error.message, error.details, error.hint]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+  return haystack.includes('search_jams_within_radius')
+}
+
+function formatPostgrestError(error?: PostgrestError | null) {
+  if (!error) return undefined
+  const { code, message, details, hint } = error
+  return { code, message, details, hint }
 }

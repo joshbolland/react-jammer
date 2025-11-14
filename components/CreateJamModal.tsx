@@ -2,18 +2,37 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { JamForm } from './JamForm'
-import { X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface CreateJamModalProps {
   buttonClassName?: string
   autoOpen?: boolean
+  variant?: 'default' | 'compact'
 }
 
-export function CreateJamModal({ buttonClassName = 'btn-primary', autoOpen = false }: CreateJamModalProps) {
+export function CreateJamModal({
+  buttonClassName,
+  autoOpen = false,
+  variant = 'default',
+}: CreateJamModalProps) {
   const [open, setOpen] = useState(autoOpen)
   const router = useRouter()
   const autoOpenHandledRef = useRef(autoOpen)
+  const isCompact = variant === 'compact'
+  const resolvedButtonClassName = buttonClassName ?? (isCompact ? '' : 'btn-primary')
+  const buttonClasses = [
+    resolvedButtonClassName,
+    isCompact
+      ? 'group inline-flex items-center gap-3 rounded-full border border-white/80 bg-white/90 px-4 py-2 text-sm font-semibold text-slate-900 shadow-[0_18px_36px_-28px_rgba(24,39,75,0.55)] backdrop-blur transition hover:-translate-y-0.5 hover:border-primary-200/80 hover:text-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300'
+      : 'group gap-3 px-4 py-3 text-base',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const iconClasses = isCompact
+    ? 'inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-50 text-primary-600 shadow-[0_18px_40px_-26px_rgba(79,70,229,0.55)] transition-transform duration-200 group-hover:scale-105'
+    : 'inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-primary-600 shadow-[0_18px_40px_-22px_rgba(79,70,229,0.8)] transition-transform duration-200 group-hover:scale-105'
 
   useEffect(() => {
     if (autoOpen) {
@@ -53,20 +72,38 @@ export function CreateJamModal({ buttonClassName = 'btn-primary', autoOpen = fal
     router.push(`/jams/${jamId}`)
   }
 
+  const buttonLabel = isCompact ? (
+    <span className="flex flex-col text-left leading-tight">
+      <span className="text-sm font-semibold text-slate-900">Host a jam</span>
+      <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+        Invite players
+      </span>
+    </span>
+  ) : (
+    <span className="flex flex-col text-left leading-tight">
+      <span className="text-lg font-semibold">Host a jam</span>
+    </span>
+  )
+
   return (
     <>
-      <button type="button" className={buttonClassName} onClick={() => setOpen(true)}>
-        Create Jam
+      <button type="button" className={buttonClasses} onClick={() => setOpen(true)}>
+        <span className={iconClasses}>
+          <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+        </span>
+        {buttonLabel}
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto px-4 py-12 sm:py-16">
+        <div className="create-jam-overlay">
+          <div className="create-jam-backdrop" onClick={closeModal} aria-hidden="true" />
           <div
-            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm"
-            onClick={closeModal}
-            aria-hidden="true"
-          />
-          <div className="relative z-10 w-full max-w-3xl rounded-[32px] border border-white/60 bg-white/95 p-8 shadow-[0_60px_140px_-60px_rgba(97,76,200,0.55)]">
+            className="create-jam-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-jam-title"
+            aria-describedby="create-jam-description"
+          >
             <button
               type="button"
               onClick={closeModal}
@@ -77,8 +114,12 @@ export function CreateJamModal({ buttonClassName = 'btn-primary', autoOpen = fal
             </button>
 
             <div className="mb-6 pr-10">
-              <h2 className="text-2xl font-semibold text-slate-900">Create a Jam</h2>
-              <p className="text-sm text-slate-500">Invite musicians to join your next session.</p>
+              <h2 id="create-jam-title" className="text-2xl font-semibold text-slate-900">
+                Create a Jam
+              </h2>
+              <p id="create-jam-description" className="text-sm text-slate-500">
+                Invite musicians to join your next session.
+              </p>
             </div>
 
             <div className="relative">

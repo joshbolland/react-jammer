@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import type { Instrument } from '@/lib/types'
+import { getInstrumentIcon } from './InstrumentIcon'
 
 export type SearchResultType = 'jam'
 
@@ -10,7 +12,7 @@ export interface SearchResultEntry {
   secondaryLabel?: string
   tertiaryLabel?: string
   distanceLabel?: string
-  badges?: string[]
+  badges?: Instrument[]
   metaLabel?: string
 }
 
@@ -37,7 +39,7 @@ export function SearchResultsPanel({ results, variant = 'card' }: SearchResultsP
     : 'relative flex h-full flex-col px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8'
   const listContainerClass = isSidebar ? 'mt-6' : 'mt-6 flex-1 overflow-hidden'
   const listWrapperClass = isSidebar ? '' : '-mx-2 max-h-[520px] overflow-y-auto px-2'
-  const listClass = isSidebar ? 'space-y-0' : 'space-y-3'
+  const listClass = isSidebar ? 'divide-y divide-slate-200/70' : 'space-y-3'
   const headerHintClass = isSidebar
     ? 'text-[10px] font-semibold uppercase tracking-[0.32em] text-slate-400'
     : 'text-[11px] font-semibold uppercase tracking-[0.46em] text-primary-400'
@@ -95,7 +97,7 @@ export function SearchResultsPanel({ results, variant = 'card' }: SearchResultsP
 function ResultCard({ result, variant }: { result: SearchResultEntry; variant: 'card' | 'sidebar' }) {
   const isSidebar = variant === 'sidebar'
   const linkClass = isSidebar
-    ? 'group block border-b border-white/15 px-0 py-4 transition hover:bg-white/60 focus-visible:outline-none'
+    ? 'group block px-0 py-4 transition hover:bg-white/60 focus-visible:outline-none'
     : 'group relative block overflow-hidden rounded-2xl border border-white/0 bg-white/70 px-5 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary-200/80 hover:bg-white shadow-[0_18px_45px_-30px_rgba(105,78,214,0.65)]'
   const badgeClass = isSidebar
     ? 'inline-flex items-center px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500'
@@ -114,10 +116,6 @@ function ResultCard({ result, variant }: { result: SearchResultEntry; variant: '
       <span className="text-base font-semibold tracking-[0.1em]">GO</span>
     </div>
   )
-  const badgesClass = isSidebar
-    ? 'mt-2 flex flex-wrap gap-2 text-xs uppercase tracking-[0.28em] text-slate-400'
-    : 'mt-3 flex flex-wrap gap-2'
-
   return (
     <Link href={result.href} className={linkClass}>
       <div className="flex items-start justify-between gap-4">
@@ -155,22 +153,31 @@ function ResultCard({ result, variant }: { result: SearchResultEntry; variant: '
         {goButton ?? <span className="mt-1 text-sm font-semibold text-primary-500 transition group-hover:text-primary-600">→</span>}
       </div>
       {result.badges && result.badges.length > 0 ? (
-        <div className={badgesClass}>
-          {result.badges.slice(0, 4).map((badge) => (
-            <span
-              key={badge}
-              className={
-                isSidebar
-                  ? 'inline-flex items-center bg-white/70 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.28em] text-slate-500'
-                  : 'inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-500 transition group-hover:bg-primary-50 group-hover:text-primary-600'
-              }
-            >
-              {badge}
-            </span>
-          ))}
-        </div>
+        <InstrumentBadgeList instruments={result.badges} isSidebar={isSidebar} />
       ) : null}
     </Link>
+  )
+}
+
+function InstrumentBadgeList({ instruments, isSidebar }: { instruments: Instrument[]; isSidebar: boolean }) {
+  const containerClass = isSidebar ? 'mt-2 flex flex-wrap gap-2' : 'mt-3 flex flex-wrap gap-2'
+  const chipClass = isSidebar
+    ? 'group/instrument inline-flex items-center rounded-full border border-white/55 bg-white/80 px-2 py-1 text-xs font-medium text-slate-600 shadow-[0_10px_24px_-20px_rgba(24,39,75,0.35)] transition-all duration-200 hover:border-primary-200 hover:text-primary-600'
+    : 'group/instrument inline-flex items-center rounded-full border border-slate-200/70 bg-white/90 px-2.5 py-1 text-xs font-medium text-slate-600 shadow-[0_12px_28px_-22px_rgba(24,39,75,0.35)] transition-all duration-200 hover:border-primary-200 hover:bg-primary-50/80 hover:text-primary-600'
+
+  return (
+    <div className={containerClass}>
+      {instruments.slice(0, 4).map((instrument) => (
+        <span key={instrument} aria-label={instrument} className={chipClass}>
+          <span className="inline-flex h-5 w-5 items-center justify-center text-current">
+            {getInstrumentIcon(instrument, { className: 'h-5 w-5', strokeWidth: 1.6 })}
+          </span>
+          <span className="ml-0 max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 ease-out group-hover/instrument:ml-2 group-hover/instrument:max-w-xs group-hover/instrument:opacity-100">
+            {instrument}
+          </span>
+        </span>
+      ))}
+    </div>
   )
 }
 

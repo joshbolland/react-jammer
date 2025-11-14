@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useAuth } from './AuthProvider'
 import { createSupabaseClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export function Navbar() {
   const { user, loading } = useAuth()
@@ -12,8 +12,62 @@ export function Navbar() {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [profile, setProfile] = useState<{ avatar_url: string | null; display_name: string | null } | null>(
+    null
+  )
+  const desktopUserMenuRef = useRef<HTMLDivElement | null>(null)
+  const mobileUserMenuRef = useRef<HTMLDivElement | null>(null)
   const linkBase =
     'text-sm font-medium text-slate-600 transition-colors hover:text-primary-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-2 rounded-full px-3 py-1.5'
+  const userMetadata = (user?.user_metadata ?? {}) as {
+    avatar_url?: string | null
+    display_name?: string | null
+    full_name?: string | null
+  }
+  const profileAvatarUrl =
+    typeof profile?.avatar_url === 'string' && profile.avatar_url.length > 0
+      ? profile.avatar_url
+      : null
+  const metadataAvatarUrl =
+    typeof userMetadata.avatar_url === 'string' && userMetadata.avatar_url.length > 0
+      ? userMetadata.avatar_url
+      : null
+  const avatarUrl = profileAvatarUrl ?? metadataAvatarUrl ?? null
+  const profileDisplayName =
+    typeof profile?.display_name === 'string' && profile.display_name.trim().length > 0
+      ? profile.display_name.trim()
+      : null
+  const userDisplayName =
+    profileDisplayName ??
+    userMetadata.display_name ??
+    userMetadata.full_name ??
+    user?.email ??
+    'Your account'
+  const userInitial =
+    userDisplayName && userDisplayName.length > 0
+      ? userDisplayName.charAt(0).toUpperCase()
+      : 'Y'
+  const userEmail = user?.email ?? ''
+  const renderAvatar = (size: 'md' | 'lg' = 'md') => {
+    const dimension = size === 'lg' ? 'h-12 w-12' : 'h-10 w-10'
+    const textSize = size === 'lg' ? 'text-lg' : 'text-base'
+    return (
+      <span
+        className={`flex ${dimension} items-center justify-center overflow-hidden rounded-full bg-primary-100 text-primary-700 ring-2 ring-white`}
+      >
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={`${userDisplayName} avatar`}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span className={`font-semibold ${textSize}`}>{userInitial}</span>
+        )}
+      </span>
+    )
+  }
 
   useEffect(() => {
     let active = true
@@ -86,6 +140,101 @@ export function Navbar() {
     }
   }, [supabase, user])
 
+  useEffect(() => {
+    let active = true
+    if (!user) {
+      setProfile(null)
+      return () => {
+        active = false
+      }
+    }
+
+    const loadProfile = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('avatar_url, display_name')
+          .eq('id', user.id)
+          .single()
+        if (!active) return
+        if (error) {
+          console.error('Error loading user profile for navbar:', error)
+          setProfile(null)
+          return
+        }
+        setProfile(data ?? null)
+      } catch (error) {
+        console.error('Unexpected error loading user profile for navbar:', error)
+        if (active) {
+          setProfile(null)
+        }
+      }
+    }
+
+    loadProfile()
+
+    const channel = supabase
+      .channel(`profiles-navbar:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          if (!active) return
+          const updated = payload.new as { avatar_url: string | null; display_name: string | null }
+          setProfile(updated ?? null)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      active = false
+      supabase.removeChannel(channel)
+    }
+  }, [supabase, user])
+
+  useEffect(() => {
+    if (!userMenuOpen) return
+    const handleClickAway = (event: MouseEvent) => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (
+        (desktopUserMenuRef.current && desktopUserMenuRef.current.contains(target)) ||
+        (mobileUserMenuRef.current && mobileUserMenuRef.current.contains(target))
+      ) {
+        return
+      }
+      setUserMenuOpen(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setUserMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickAway)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickAway)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [userMenuOpen])
+
+  useEffect(() => {
+    if (!user) {
+      setUserMenuOpen(false)
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (!menuOpen) {
+      setUserMenuOpen(false)
+    }
+  }, [menuOpen])
+
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push('/')
@@ -124,9 +273,6 @@ export function Navbar() {
                 <Link href="/jams" className={linkBase}>
                   Jams
                 </Link>
-                <Link href="/requests" className={linkBase}>
-                  Requests
-                </Link>
                 <Link
                   href="/messages"
                   className={`${linkBase} relative flex items-center gap-2`}
@@ -138,15 +284,56 @@ export function Navbar() {
                     </span>
                   )}
                 </Link>
-                <Link href="/profile/edit" className={linkBase}>
-                  Profile
+                <Link href="/profile/connections" className={linkBase}>
+                  Connections
                 </Link>
-                <button
-                  onClick={handleSignOut}
-                  className="btn-secondary"
-                >
-                  Sign Out
-                </button>
+                <div className="relative" ref={desktopUserMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setUserMenuOpen((prev) => !prev)}
+                    className="flex items-center gap-2 rounded-full border border-primary-100/70 bg-white/90 pl-1 pr-2 text-sm font-semibold text-slate-600 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.3)] transition hover:text-primary-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-2"
+                    aria-haspopup="menu"
+                    aria-expanded={userMenuOpen}
+                  >
+                    {renderAvatar()}
+                    <svg
+                      className={`h-4 w-4 text-slate-400 transition ${userMenuOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {userMenuOpen && (
+                    <div
+                      className="absolute right-0 z-10 mt-2 w-48 rounded-2xl border border-primary-50 bg-white/95 p-2 text-sm text-slate-600 shadow-[0_25px_70px_-35px_rgba(15,23,42,0.35)] backdrop-blur"
+                      role="menu"
+                      aria-label="Account menu"
+                    >
+                      <Link
+                        href="/profile/edit"
+                        className="block rounded-xl px-3 py-2 hover:bg-primary-50"
+                        onClick={() => {
+                          setUserMenuOpen(false)
+                        }}
+                      >
+                        Profile
+                      </Link>
+                      <button
+                        type="button"
+                        className="block w-full rounded-xl px-3 py-2 text-left text-primary-600 hover:bg-primary-50"
+                        onClick={() => {
+                          setUserMenuOpen(false)
+                          void handleSignOut()
+                        }}
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <>
@@ -196,11 +383,64 @@ export function Navbar() {
           <div className="mt-3 space-y-2 rounded-3xl border border-primary-100/70 bg-white/95 p-4 shadow-[0_25px_70px_-45px_rgba(112,66,255,0.35)] backdrop-blur">
             {user ? (
               <>
+                <div
+                  className="rounded-2xl border border-primary-100/70 bg-white/90 p-4"
+                  ref={mobileUserMenuRef}
+                >
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-3 text-left"
+                    onClick={() => setUserMenuOpen((prev) => !prev)}
+                    aria-haspopup="menu"
+                    aria-expanded={userMenuOpen}
+                  >
+                    <div className="flex items-center gap-3">
+                      {renderAvatar('lg')}
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{userDisplayName}</p>
+                        {userEmail ? (
+                          <p className="text-xs text-slate-500">{userEmail}</p>
+                        ) : null}
+                      </div>
+                    </div>
+                    <svg
+                      className={`h-5 w-5 text-slate-400 transition ${userMenuOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {userMenuOpen && (
+                    <div className="mt-3 space-y-1 text-sm text-slate-600" role="menu" aria-label="Account menu">
+                      <Link
+                        href="/profile/edit"
+                        className="block rounded-xl px-3 py-2 hover:bg-primary-50"
+                        onClick={() => {
+                          setUserMenuOpen(false)
+                          setMenuOpen(false)
+                        }}
+                      >
+                        Profile
+                      </Link>
+                      <button
+                        type="button"
+                        className="block w-full rounded-xl px-3 py-2 text-left text-primary-600 hover:bg-primary-50"
+                        onClick={() => {
+                          setUserMenuOpen(false)
+                          setMenuOpen(false)
+                          void handleSignOut()
+                        }}
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <Link href="/jams" className="block rounded-2xl px-4 py-2 text-sm text-slate-600 hover:bg-primary-50" onClick={() => setMenuOpen(false)}>
                   Jams
-                </Link>
-                <Link href="/requests" className="block rounded-2xl px-4 py-2 text-sm text-slate-600 hover:bg-primary-50" onClick={() => setMenuOpen(false)}>
-                  Requests
                 </Link>
                 <Link
                   href="/messages"
@@ -214,18 +454,9 @@ export function Navbar() {
                     </span>
                   )}
                 </Link>
-                <Link href="/profile/edit" className="block rounded-2xl px-4 py-2 text-sm text-slate-600 hover:bg-primary-50" onClick={() => setMenuOpen(false)}>
-                  Profile
+                <Link href="/profile/connections" className="block rounded-2xl px-4 py-2 text-sm text-slate-600 hover:bg-primary-50" onClick={() => setMenuOpen(false)}>
+                  Connections
                 </Link>
-                <button
-                  onClick={() => {
-                    handleSignOut()
-                    setMenuOpen(false)
-                  }}
-                  className="w-full rounded-2xl px-4 py-2 text-left text-sm text-primary-600 hover:bg-primary-50"
-                >
-                  Sign Out
-                </button>
               </>
             ) : (
               <>

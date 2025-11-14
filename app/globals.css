@@ -64,6 +64,16 @@
     @apply -translate-y-1 shadow-[0_65px_150px_-80px_rgba(90,70,200,0.6)];
   }
 
+  .genre-motion-layer {
+    position: absolute;
+    inset: -18%;
+    pointer-events: none;
+    mix-blend-mode: soft-light;
+    filter: saturate(1.08);
+    background-size: 220% 220%;
+    transition: opacity 0.6s ease;
+  }
+
   .hero-underline {
     position: absolute;
     left: 0;
@@ -154,34 +164,126 @@
   }
 
   .map-tooltip {
-    background: rgba(255, 255, 255, 0.85);
-    color: #1f2937;
-    border-radius: 9999px;
-    padding: 6px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    box-shadow: 0 18px 40px -26px rgba(15, 23, 42, 0.45);
+    background: rgba(255, 255, 255, 0.96);
+    color: #0f172a;
+    border-radius: 20px;
+    padding: 14px 16px;
+    box-shadow: 0 30px 70px -45px rgba(15, 23, 42, 0.65);
+    pointer-events: auto;
   }
 
   .map-tooltip-inner {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    text-align: center;
+    gap: 10px;
+    min-width: 230px;
   }
 
-  .map-tooltip-inner strong {
+  .map-tooltip-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+  }
+
+  .map-tooltip-text strong {
+    font-size: 13px;
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
-  .map-tooltip-inner span {
-    font-size: 10px;
+  .map-tooltip-text span {
+    font-size: 11px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: rgba(79, 70, 229, 0.8);
+  }
+
+  .map-tooltip-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .map-tooltip-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+
+  .map-tooltip-btn-primary {
+    background: linear-gradient(120deg, rgba(111, 52, 230, 0.95), rgba(134, 92, 246, 0.95));
+    color: #fff;
+    box-shadow: 0 18px 40px -22px rgba(111, 52, 230, 0.6);
+  }
+
+  .map-tooltip-btn-primary:hover:not([disabled]) {
+    transform: translateY(-1px);
+    box-shadow: 0 22px 46px -20px rgba(111, 52, 230, 0.65);
+  }
+
+  .map-tooltip-btn-secondary {
+    background: rgba(255, 255, 255, 0.95);
+    color: #6f34e6;
+    border: 1px solid rgba(111, 52, 230, 0.35);
+  }
+
+  .map-tooltip-btn-secondary:hover {
+    background: rgba(255, 255, 255, 1);
+    border-color: rgba(111, 52, 230, 0.5);
+  }
+
+  .map-tooltip-btn[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .map-tooltip-btn.is-loading {
+    opacity: 0.85;
+  }
+
+  .map-tooltip-btn.is-success {
+    background: linear-gradient(120deg, #0ea5e9, #7c3aed);
+    color: #fff;
+  }
+
+  .map-tooltip-btn.is-error {
+    background: rgba(254, 226, 226, 0.95);
+    color: #991b1b;
+    border: 1px solid rgba(248, 113, 113, 0.6);
+  }
+
+  .connect-button-metronome:hover {
+    animation: connectMetronome 0.85s ease-in-out;
+  }
+
+  .connect-button-ripple {
+    animation: connectRipple 0.7s ease-out forwards;
+  }
+
+  .create-jam-overlay {
+    @apply fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto px-4 py-10 sm:py-16;
+  }
+
+  .create-jam-backdrop {
+    @apply absolute inset-0 bg-slate-900/60 backdrop-blur-md;
+    animation: modalBackdropFade 0.35s ease forwards;
+  }
+
+  .create-jam-modal {
+    @apply relative z-10 w-full max-w-3xl rounded-[32px] border border-white/60 bg-white/95 p-8 shadow-[0_60px_140px_-60px_rgba(97,76,200,0.55)] sm:p-10;
+    animation: modalSlideUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
 }
 
@@ -196,6 +298,10 @@
 
   .animate-hero-float-slow {
     animation: heroFloatSlow 22s ease-in-out infinite alternate;
+  }
+
+  .animate-genre-ambient {
+    animation: genreAmbientShift 18s ease-in-out infinite alternate;
   }
 }
 
@@ -341,5 +447,92 @@
   }
   100% {
     transform: rotate(8deg) scale(1.08);
+  }
+}
+
+@keyframes genreAmbientShift {
+  0% {
+    background-position: 0% 30%;
+    opacity: 0.45;
+    transform: rotate(-2deg) scale(1);
+  }
+  50% {
+    background-position: 80% 70%;
+    opacity: 0.75;
+    transform: rotate(2deg) scale(1.03);
+  }
+  100% {
+    background-position: 20% 5%;
+    opacity: 0.6;
+    transform: rotate(-1deg) scale(1.02);
+  }
+}
+
+@keyframes connectMetronome {
+  0% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 22px 50px -25px rgba(109, 76, 205, 0.85);
+  }
+  60% {
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: 0 32px 62px -30px rgba(109, 76, 205, 0.95);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 22px 50px -25px rgba(109, 76, 205, 0.85);
+  }
+}
+
+@keyframes connectRipple {
+  0% {
+    opacity: 0.45;
+    transform: scale(0.85);
+  }
+  70% {
+    opacity: 0.15;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+
+@keyframes modalBackdropFade {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes modalSlideUp {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 40px, 0) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@layer utilities {
+  /* jam-card-layout keeps copy + 260px rail side by side on lg+, stacks gracefully below otherwise. */
+  .jam-card-layout {
+    @apply grid gap-6;
+  }
+
+  @media (min-width: 1024px) {
+    .jam-card-layout {
+      grid-template-columns: minmax(0, 1fr) clamp(240px, 27vw, 280px);
+      align-items: flex-start;
+    }
+  }
+
+  /* jam-card-description caps body copy at ~60 characters to avoid colliding with the rail. */
+  .jam-card-description {
+    max-width: 60ch;
   }
 }

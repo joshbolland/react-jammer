@@ -124,6 +124,74 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
+-- Return upcoming jams within a radius, including host snapshot and distance
+CREATE OR REPLACE FUNCTION public.search_jams_within_radius(
+  p_lat DOUBLE PRECISION,
+  p_lng DOUBLE PRECISION,
+  p_radius_km DOUBLE PRECISION,
+  p_instruments TEXT[] DEFAULT '{}',
+  p_search TEXT DEFAULT NULL,
+  p_date_from TIMESTAMPTZ DEFAULT NULL,
+  p_date_to TIMESTAMPTZ DEFAULT NULL,
+  p_limit INT DEFAULT 200
+) RETURNS TABLE (
+  id UUID,
+  host_id UUID,
+  title TEXT,
+  description TEXT,
+  jam_time TIMESTAMPTZ,
+  city TEXT,
+  country TEXT,
+  lat DOUBLE PRECISION,
+  lng DOUBLE PRECISION,
+  desired_instruments TEXT[],
+  max_attendees INT,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ,
+  host JSONB,
+  distance_km DOUBLE PRECISION
+) AS $$
+  SELECT
+    j.id,
+    j.host_id,
+    j.title,
+    j.description,
+    j.jam_time,
+    j.city,
+    j.country,
+    j.lat,
+    j.lng,
+    j.desired_instruments,
+    j.max_attendees,
+    j.created_at,
+    j.updated_at,
+    to_jsonb(host) AS host,
+    haversine_distance(p_lat, p_lng, j.lat, j.lng) AS distance_km
+  FROM jams j
+  JOIN profiles host ON host.id = j.host_id
+  WHERE
+    j.lat IS NOT NULL
+    AND j.lng IS NOT NULL
+    AND j.jam_time >= COALESCE(p_date_from, NOW())
+    AND (p_date_to IS NULL OR j.jam_time <= p_date_to)
+    AND (
+      p_radius_km IS NULL
+      OR haversine_distance(p_lat, p_lng, j.lat, j.lng) <= p_radius_km
+    )
+    AND (
+      p_instruments IS NULL
+      OR cardinality(p_instruments) = 0
+      OR j.desired_instruments && p_instruments
+    )
+    AND (
+      p_search IS NULL
+      OR j.title ILIKE p_search
+      OR j.description ILIKE p_search
+    )
+  ORDER BY distance_km ASC, j.jam_time ASC
+  LIMIT LEAST(GREATEST(p_limit, 1), 400);
+$$ LANGUAGE sql STABLE;
+
 -- Row Level Security (RLS) Policies
 
 -- Enable RLS on all tables

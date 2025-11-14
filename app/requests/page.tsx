@@ -1,38 +1,40 @@
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
-import type { Database } from '@/lib/database.types'
 import { IncomingRequestsList } from '@/components/IncomingRequestsList'
 import { OutgoingRequestsList } from '@/components/OutgoingRequestsList'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-type JamMemberRow = Database['public']['Tables']['jam_members']['Row']
-
-type OutgoingRow = JamMemberRow & {
-  jam?: {
-    id: string
-    title: string | null
-    jam_time: string | null
-    city: string | null
-    country: string | null
-  } | null
+type JamPreview = {
+  id: string
+  title: string | null
+  jam_time: string | null
+  city: string | null
+  country: string | null
+  host_id?: string | null
 }
 
-type IncomingRow = JamMemberRow & {
-  jam?: {
-    id: string
-    title: string | null
-    jam_time: string | null
-    city: string | null
-    country: string | null
-    host_id: string
-  } | null
-  user?: {
-    id: string
-    display_name: string | null
-    avatar_url: string | null
-  } | null
+type UserPreview = {
+  id: string
+  display_name: string | null
+  avatar_url: string | null
+}
+
+type OutgoingRow = {
+  jam_id: string | null
+  status: string | null
+  joined_at: string | null
+  jam?: unknown
+}
+
+type IncomingRow = {
+  jam_id: string | null
+  user_id: string | null
+  status: string | null
+  joined_at: string | null
+  jam?: unknown
+  user?: unknown
 }
 
 function normalizeStatus(value: string | null | undefined): 'pending' | 'approved' | 'declined' {
@@ -48,6 +50,33 @@ function normalizeStatus(value: string | null | undefined): 'pending' | 'approve
 function locationString(city?: string | null, country?: string | null) {
   const parts = [city, country].filter((part): part is string => Boolean(part && part.trim()))
   return parts.length ? parts.join(', ') : null
+}
+
+function toJamPreview(value: unknown): JamPreview | null {
+  if (!value || typeof value !== 'object' || value === null) return null
+  const jam = value as Record<string, unknown>
+  const id = typeof jam.id === 'string' ? jam.id : null
+  if (!id) return null
+  return {
+    id,
+    title: typeof jam.title === 'string' ? jam.title : null,
+    jam_time: typeof jam.jam_time === 'string' ? jam.jam_time : null,
+    city: typeof jam.city === 'string' ? jam.city : null,
+    country: typeof jam.country === 'string' ? jam.country : null,
+    host_id: typeof jam.host_id === 'string' ? jam.host_id : null,
+  }
+}
+
+function toUserPreview(value: unknown): UserPreview | null {
+  if (!value || typeof value !== 'object' || value === null) return null
+  const user = value as Record<string, unknown>
+  const id = typeof user.id === 'string' ? user.id : null
+  if (!id) return null
+  return {
+    id,
+    display_name: typeof user.display_name === 'string' ? user.display_name : null,
+    avatar_url: typeof user.avatar_url === 'string' ? user.avatar_url : null,
+  }
 }
 
 export default async function RequestsPage() {
@@ -84,7 +113,7 @@ export default async function RequestsPage() {
   const outgoingRequests = outgoingData
     .map((row) => {
       if (!row?.jam_id) return null
-      const jam = row.jam
+      const jam = toJamPreview(row.jam ?? null)
       const jamTitle = jam?.title ?? 'Jam no longer available'
       const jamTime = jam?.jam_time ?? null
       const jamLocation = locationString(jam?.city, jam?.country)
@@ -107,8 +136,8 @@ export default async function RequestsPage() {
   const incomingRequests = incomingData
     .map((row) => {
       if (!row?.jam_id || !row?.user_id) return null
-      const jam = row.jam
-      const userProfile = row.user
+      const jam = toJamPreview(row.jam ?? null)
+      const userProfile = toUserPreview(row.user ?? null)
       const jamLocation = locationString(jam?.city, jam?.country)
       const joinedAt = row.joined_at ?? new Date().toISOString()
 

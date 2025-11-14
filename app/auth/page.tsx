@@ -195,7 +195,7 @@ function AuthPageContent() {
               </>
             ) : (
               <>
-                Don't have an account?{' '}
+                Don&apos;t have an account?{' '}
                 <Link
                   href="/auth?mode=signup"
                   className="text-primary-600 hover:text-primary-700 font-medium"

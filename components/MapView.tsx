@@ -117,47 +117,7 @@ export function LeafletMap({
     const markersGroup = L.layerGroup().addTo(map)
     markersRef.current = markersGroup
 
-    ; (jams || []).forEach((jam) => {
-      if (!jam || jam.lat == null || jam.lng == null) return
-      // use a circle marker for a compact, crisp marker
-      const m = L.circleMarker([jam.lat, jam.lng], {
-        radius: 7,
-        color: '#1f2937', // gray-800
-        weight: 1,
-        fillColor: '#3b82f6', // blue-500
-        fillOpacity: 0.9,
-        className: 'jam-marker',
-      })
-
-      const time = jam.jam_time ? format(new Date(jam.jam_time), 'PPP p') : ''
-      const hostName = jam.host?.display_name || ''
-      const tooltipTime = jam.jam_time
-        ? format(new Date(jam.jam_time), 'EEE, MMM d · h:mm a')
-        : ''
-      const popupHtml = `
-            <div style="min-width:180px">
-              <h3 style="font-weight:600;margin:0 0 4px">${escapeHtml(jam.title)}</h3>
-              ${hostName ? `<div style="font-size:12px;color:#6b7280;margin-bottom:4px">Hosted by ${escapeHtml(hostName)}</div>` : ''}
-              ${time ? `<div style="font-size:12px;color:#6b7280;margin-bottom:6px">${escapeHtml(time)}</div>` : ''}
-              <a href="/jams/${jam.id}" style="color:#2563eb;text-decoration:none;font-size:13px">View Jam →</a>
-            </div>
-          `
-      m.bindPopup(L.popup().setContent(popupHtml))
-      const tooltipHtml = `
-            <div class="map-tooltip-inner">
-              <strong>${escapeHtml(jam.title)}</strong>
-              ${tooltipTime ? `<span>${escapeHtml(tooltipTime)}</span>` : ''}
-            </div>
-          `
-      m.bindTooltip(tooltipHtml, {
-        direction: 'top',
-        offset: [0, -12],
-        opacity: 0.95,
-        className: 'map-tooltip',
-        sticky: true,
-      })
-      markersGroup.addLayer(m)
-    })
+    renderMarkers(markersGroup, jams)
 
     mapRef.current = map
 
@@ -175,51 +135,35 @@ export function LeafletMap({
 
   // Update markers when jam data changes
   useEffect(() => {
-    const mg = markersRef.current
-    if (!mg) return
-    mg.clearLayers()
-    if (jams && jams.length > 0) {
-      jams.forEach((jam) => {
-        if (!jam || jam.lat == null || jam.lng == null) return
-        const m = L.circleMarker([jam.lat, jam.lng], {
-          radius: 9,
-          color: '#8a55ff',
-          weight: 1,
-          fillColor: '#8a55ff',
-          fillOpacity: 0.9,
-          className: 'jam-marker',
-        })
-        const time = jam.jam_time ? format(new Date(jam.jam_time), 'PPP p') : ''
-        const hostName = jam.host?.display_name || ''
-        const tooltipTime = jam.jam_time
-          ? format(new Date(jam.jam_time), 'EEE, MMM d · h:mm a')
-          : ''
-        const popupHtml = `
-          <div style="min-width:180px">
-            <h3 style="font-weight:600;margin:0 0 4px">${escapeHtml(jam.title)}</h3>
-            ${hostName ? `<div style=\"font-size:12px;color:#6b7280;margin-bottom:4px\">Hosted by ${escapeHtml(hostName)}</div>` : ''}
-            ${time ? `<div style=\"font-size:12px;color:#6b7280;margin-bottom:6px\">${escapeHtml(time)}</div>` : ''}
-            <a href="/jams/${jam.id}" style="color:#2563eb;text-decoration:none;font-size:13px">View Jam →</a>
-          </div>
-        `
-        m.bindPopup(L.popup().setContent(popupHtml))
-        const tooltipHtml = `
-          <div class="map-tooltip-inner">
-            <strong>${escapeHtml(jam.title)}</strong>
-            ${tooltipTime ? `<span>${escapeHtml(tooltipTime)}</span>` : ''}
-          </div>
-        `
-        m.bindTooltip(tooltipHtml, {
-          direction: 'top',
-          offset: [0, -12],
-          opacity: 0.95,
-          className: 'map-tooltip',
-          sticky: true,
-        })
-        mg.addLayer(m)
-      })
-    }
+    renderMarkers(markersRef.current, jams)
   }, [jams])
+
+  useEffect(() => {
+    const wrapper = wrapperRef.current
+    if (!wrapper) return
+
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null
+      if (!target) return
+      const actionTrigger = target.closest<HTMLElement>('[data-map-action]')
+      if (!actionTrigger) return
+
+      const action = actionTrigger.getAttribute('data-map-action')
+      const jamId = actionTrigger.getAttribute('data-jam-id')
+      if (!action || !jamId) return
+
+      if (action === 'join') {
+        event.preventDefault()
+        event.stopPropagation()
+        void handleJoinFromTooltip(actionTrigger, jamId)
+      }
+    }
+
+    wrapper.addEventListener('click', handleClick as EventListener)
+    return () => {
+      wrapper.removeEventListener('click', handleClick as EventListener)
+    }
+  }, [])
 
   // Recenter map when mapCenter prop changes
   useEffect(() => {
@@ -232,6 +176,140 @@ export function LeafletMap({
       }
     }
   }, [mapCenter])
+
+  function renderMarkers(layerGroup: L.LayerGroup | null, jamList?: Jam[]) {
+    if (!layerGroup) return
+    layerGroup.clearLayers()
+
+    ; (jamList ?? []).forEach((jam) => {
+      const marker = createMarker(jam)
+      if (marker) {
+        layerGroup.addLayer(marker)
+      }
+    })
+  }
+
+  function createMarker(jam?: Jam | null) {
+    if (!jam || jam.lat == null || jam.lng == null) return null
+    const marker = L.circleMarker([jam.lat, jam.lng], {
+      radius: 9,
+      color: '#8a55ff',
+      weight: 1,
+      fillColor: '#8a55ff',
+      fillOpacity: 0.9,
+      className: 'jam-marker',
+    })
+
+    const popupHtml = renderPopupHtml(jam)
+    marker.bindPopup(L.popup().setContent(popupHtml))
+
+    const tooltipHtml = renderTooltipHtml(jam)
+    marker.bindTooltip(tooltipHtml, {
+      direction: 'top',
+      offset: [0, -12],
+      opacity: 0.95,
+      className: 'map-tooltip',
+      sticky: true,
+      interactive: true,
+    })
+
+    return marker
+  }
+
+  function renderPopupHtml(jam: Jam) {
+    const time = jam.jam_time ? format(new Date(jam.jam_time), 'PPP p') : ''
+    const hostName = jam.host?.display_name || ''
+    return `
+      <div style="min-width:200px">
+        <h3 style="font-weight:600;margin:0 0 4px">${escapeHtml(jam.title)}</h3>
+        ${
+          hostName
+            ? `<div style="font-size:12px;color:#6b7280;margin-bottom:4px">Hosted by ${escapeHtml(hostName)}</div>`
+            : ''
+        }
+        ${
+          time
+            ? `<div style="font-size:12px;color:#6b7280;margin-bottom:6px">${escapeHtml(time)}</div>`
+            : ''
+        }
+        <a href="/jams/${jam.id}" style="color:#2563eb;text-decoration:none;font-size:13px">View Jam →</a>
+      </div>
+    `
+  }
+
+  function renderTooltipHtml(jam: Jam) {
+    const tooltipTime = jam.jam_time
+      ? format(new Date(jam.jam_time), 'EEE, MMM d · h:mm a')
+      : ''
+
+    return `
+      <div class="map-tooltip-inner">
+        <div class="map-tooltip-text">
+          <strong>${escapeHtml(jam.title)}</strong>
+          ${tooltipTime ? `<span>${escapeHtml(tooltipTime)}</span>` : ''}
+        </div>
+        <div class="map-tooltip-actions">
+          <button type="button" class="map-tooltip-btn map-tooltip-btn-primary" data-map-action="join" data-jam-id="${jam.id}" data-label="Join">Join</button>
+          <a class="map-tooltip-btn map-tooltip-btn-secondary" href="/jams/${jam.id}">View</a>
+        </div>
+      </div>
+    `
+  }
+
+  async function handleJoinFromTooltip(buttonEl: HTMLElement, jamId: string) {
+    if (!jamId) return
+    if (buttonEl.getAttribute('disabled') === 'true' || buttonEl.hasAttribute('disabled')) {
+      return
+    }
+
+    const originalLabel = buttonEl.getAttribute('data-label') ?? 'Join'
+    buttonEl.setAttribute('data-loading', 'true')
+    buttonEl.classList.remove('is-error')
+    buttonEl.classList.add('is-loading')
+    buttonEl.textContent = 'Sending...'
+
+    try {
+      const response = await fetch(`/api/jams/${jamId}/join`, {
+        method: 'POST',
+        credentials: 'same-origin',
+      })
+
+      if (response.status === 401) {
+        window.location.href = '/auth'
+        return
+      }
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        const errorMessage = data?.error ?? 'Unable to join'
+        showJoinError(buttonEl, errorMessage, originalLabel)
+        return
+      }
+
+      buttonEl.classList.remove('is-loading', 'is-error')
+      buttonEl.classList.add('is-success')
+      buttonEl.textContent = 'Requested'
+      buttonEl.setAttribute('disabled', 'true')
+    } catch (e) {
+      showJoinError(buttonEl, 'Try again', originalLabel)
+    } finally {
+      buttonEl.classList.remove('is-loading')
+      buttonEl.removeAttribute('data-loading')
+    }
+  }
+
+  function showJoinError(buttonEl: HTMLElement, message: string, resetLabel: string) {
+    buttonEl.classList.add('is-error')
+    buttonEl.textContent = message
+    setTimeout(() => {
+      if (!buttonEl) return
+      buttonEl.classList.remove('is-error')
+      if (buttonEl.getAttribute('disabled') === 'true' || buttonEl.hasAttribute('disabled')) {
+        return
+      }
+      buttonEl.textContent = resetLabel
+    }, 2200)
+  }
 
   // small util to escape HTML in strings inserted into popup markup
   function escapeHtml(str?: string | null) {

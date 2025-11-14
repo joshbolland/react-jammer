@@ -112,7 +112,15 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'jams_host_id_fkey',
+            columns: ['host_id'],
+            isOneToOne: false,
+            referencedRelation: 'profiles',
+            referencedColumns: ['id'],
+          },
+        ]
       }
       jam_members: {
         Row: {
@@ -136,7 +144,22 @@ export interface Database {
           status?: string
           joined_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'jam_members_jam_id_fkey',
+            columns: ['jam_id'],
+            isOneToOne: false,
+            referencedRelation: 'jams',
+            referencedColumns: ['id'],
+          },
+          {
+            foreignKeyName: 'jam_members_user_id_fkey',
+            columns: ['user_id'],
+            isOneToOne: false,
+            referencedRelation: 'profiles',
+            referencedColumns: ['id'],
+          },
+        ]
       }
       messages: {
         Row: {
@@ -192,6 +215,39 @@ export interface Database {
         }
         Relationships: []
       }
+      connections: {
+        Row: {
+          id: string
+          requester_id: string
+          receiver_id: string
+          status: 'pending' | 'connected'
+          context_jam_id: string | null
+          created_at: string
+          updated_at: string
+          resolved_at: string | null
+        }
+        Insert: {
+          id?: string
+          requester_id: string
+          receiver_id: string
+          status?: 'pending' | 'connected'
+          context_jam_id?: string | null
+          created_at?: string
+          updated_at?: string
+          resolved_at?: string | null
+        }
+        Update: {
+          id?: string
+          requester_id?: string
+          receiver_id?: string
+          status?: 'pending' | 'connected'
+          context_jam_id?: string | null
+          created_at?: string
+          updated_at?: string
+          resolved_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -202,6 +258,35 @@ export interface Database {
           p_dm_id: string
         }
         Returns: undefined
+      }
+      search_jams_within_radius: {
+        Args: {
+          p_lat: number
+          p_lng: number
+          p_radius_km: number
+          p_instruments?: string[] | null
+          p_search?: string | null
+          p_date_from?: string | null
+          p_date_to?: string | null
+          p_limit?: number
+        }
+        Returns: {
+          id: string
+          host_id: string
+          title: string
+          description: string | null
+          jam_time: string
+          city: string | null
+          country: string | null
+          lat: number | null
+          lng: number | null
+          desired_instruments: string[]
+          max_attendees: number
+          created_at: string
+          updated_at: string
+          host: Json
+          distance_km: number
+        }[]
       }
     }
     Enums: {

@@ -1,32 +1,54 @@
-import { type LucideIcon, type LucideProps, AudioWaveform, Drum, Guitar, Keyboard, Mic2, Music2, Music3, Music4, Piano } from 'lucide-react'
+import Icon from '@mdi/react'
+import type { IconProps } from '@mdi/react/dist/IconProps'
+import {
+  mdiBugle,
+  mdiGlassFlute,
+  mdiGuitarAcoustic,
+  mdiGuitarElectric,
+  mdiGuitarPick,
+  mdiGuitarPickOutline,
+  mdiInstrumentTriangle,
+  mdiMicrophoneVariant,
+  mdiMidiPort,
+  mdiMusicClefAlto,
+  mdiMusicClefBass,
+  mdiMusicNote,
+  mdiMusicNoteEighth,
+  mdiMusicNoteSixteenth,
+  mdiPiano,
+  mdiSaxophone,
+  mdiTrumpet,
+  mdiViolin,
+} from '@mdi/js'
 import type { Instrument } from '@/lib/types'
 
-type IconRenderer = LucideIcon
+type InstrumentIconProps = Omit<IconProps, 'path'> & { strokeWidth?: number }
 
-const instrumentIcons: Partial<Record<Instrument, IconRenderer>> = {
-  guitar: Guitar,
-  ukulele: Guitar,
-  banjo: Guitar,
-  mandolin: Guitar,
-  bass: Music3,
-  drums: Drum,
-  piano: Piano,
-  keyboard: Keyboard,
-  vocals: Mic2,
-  violin: Music4,
-  viola: Music4,
-  cello: Music4,
-  saxophone: AudioWaveform,
-  trumpet: Music2,
-  trombone: Music2,
-  clarinet: Music2,
-  flute: Music2,
-  harmonica: Music3,
+const instrumentIconPaths: Partial<Record<Instrument, string>> = {
+  guitar: mdiGuitarAcoustic,
+  ukulele: mdiGuitarPick,
+  banjo: mdiGuitarPickOutline,
+  mandolin: mdiGuitarElectric,
+  bass: mdiMusicClefBass,
+  drums: mdiInstrumentTriangle,
+  piano: mdiPiano,
+  keyboard: mdiMidiPort,
+  vocals: mdiMicrophoneVariant,
+  violin: mdiViolin,
+  viola: mdiMusicClefAlto,
+  cello: mdiMusicClefBass,
+  saxophone: mdiSaxophone,
+  trumpet: mdiTrumpet,
+  trombone: mdiBugle,
+  clarinet: mdiMusicNoteEighth,
+  flute: mdiGlassFlute,
+  harmonica: mdiMusicNoteSixteenth,
 }
 
-const fallbackIcon: IconRenderer = Music4
+const fallbackIconPath = mdiMusicNote
 
-export function getInstrumentIcon(instrument: Instrument, props?: LucideProps) {
-  const Icon = instrumentIcons[instrument] ?? fallbackIcon
-  return <Icon strokeWidth={1.75} {...props} />
+export function getInstrumentIcon(instrument: Instrument, props?: InstrumentIconProps) {
+  const { strokeWidth: _strokeWidth, ...iconProps } = props ?? {}
+  const path = instrumentIconPaths[instrument] ?? fallbackIconPath
+  return <Icon path={path} {...iconProps} />
 }

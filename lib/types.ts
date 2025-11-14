@@ -114,3 +114,24 @@ export interface DM {
   last_message?: Message
   unread_count?: number
 }
+
+export type ConnectionEdgeStatus = 'pending' | 'connected'
+export type ConnectionStatus = 'none' | 'pending' | 'incoming' | 'connected' | 'self'
+
+export interface ConnectionEdge {
+  id: string
+  requester_id: string
+  receiver_id: string
+  status: ConnectionEdgeStatus
+  context_jam_id: string | null
+  created_at: string
+  updated_at: string
+  resolved_at: string | null
+  requester?: Profile | null
+  receiver?: Profile | null
+}
+
+export interface SuggestedConnection {
+  profile: Profile
+  reason: string
+}

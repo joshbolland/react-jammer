@@ -4,16 +4,20 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { ConnectButton } from './ConnectButton'
 
 interface JamMemberCardProps {
   member: any
   jamId: string
   isHost: boolean
+  currentUserId?: string
 }
 
-export function JamMemberCard({ member, jamId, isHost }: JamMemberCardProps) {
+export function JamMemberCard({ member, jamId, isHost, currentUserId }: JamMemberCardProps) {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const isSelf = member.user_id === currentUserId
+  const showConnect = Boolean(member.user_id && !isSelf)
 
   const handleStatusUpdate = async (status: 'approved' | 'declined') => {
     if (!isHost) return
@@ -66,7 +70,7 @@ export function JamMemberCard({ member, jamId, isHost }: JamMemberCardProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         {member.status === 'pending' && isHost ? (
           <>
             <button
@@ -96,6 +100,14 @@ export function JamMemberCard({ member, jamId, isHost }: JamMemberCardProps) {
           >
             {member.status}
           </span>
+        )}
+        {showConnect && (
+          <ConnectButton
+            targetUserId={member.user_id}
+            targetDisplayName={member.user?.display_name ?? 'Musician'}
+            contextJamId={jamId}
+            size="sm"
+          />
         )}
       </div>
     </div>

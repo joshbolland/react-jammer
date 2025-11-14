@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { JamCard } from './JamCard'
+import { JamCard, type JamParticipation } from './JamCard'
 import type { Jam } from '@/lib/types'
 import { toJam } from '@/lib/transformers'
 
@@ -7,9 +7,10 @@ interface JamListProps {
   limit?: number
   hostId?: string
   jams?: Jam[]
+  jamContext?: Record<string, JamParticipation>
 }
 
-export async function JamList({ limit, hostId, jams: preloadedJams }: JamListProps = {}) {
+export async function JamList({ limit, hostId, jams: preloadedJams, jamContext }: JamListProps = {}) {
   let jams = preloadedJams
 
   if (!jams) {
@@ -50,7 +51,7 @@ export async function JamList({ limit, hostId, jams: preloadedJams }: JamListPro
   return (
     <div className="grid gap-5 md:grid-cols-2">
       {displayJams.map((jam) => (
-        <JamCard key={jam.id} jam={jam} />
+        <JamCard key={jam.id} jam={jam} participation={jamContext?.[jam.id]} />
       ))}
     </div>
   )
