@@ -5,6 +5,7 @@ import { createSupabaseClient } from '@/lib/supabase-client'
 import { Message, Profile } from '@/lib/types'
 import { useAuth } from './AuthProvider'
 import { format } from 'date-fns'
+import { SendHorizonal } from 'lucide-react'
 
 interface ChatProps {
   roomType: 'dm' | 'jam'
@@ -147,71 +148,87 @@ export function Chat({ roomType, roomId }: ChatProps) {
 
   if (loading) {
     return (
-      <div className="h-96 flex items-center justify-center">
-        <div className="text-gray-500">Loading messages...</div>
+      <div className="flex h-96 items-center justify-center rounded-[28px] border border-white/70 bg-white/90">
+        <div className="text-sm font-medium text-slate-500">Warming up the room...</div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-96">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 rounded-lg">
+    <div className="flex h-96 flex-col gap-4">
+      <div className="relative flex-1 overflow-y-auto rounded-[24px] border border-slate-100 bg-gradient-to-b from-slate-50/80 via-white to-white/90 p-4 shadow-inner">
+        <div className="space-y-4">
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">
-            No messages yet. Start the conversation!
-          </div>
+            <div className="flex flex-col items-center justify-center gap-4 py-8 text-center text-slate-500">
+              <p className="text-base font-medium text-slate-600">
+                It is quiet in here. Say hi to kick things off.
+              </p>
+              <div className="flex gap-2">
+                {[0, 1, 2].map((ghost) => (
+                  <span
+                    key={ghost}
+                    className="h-10 w-10 rounded-full bg-slate-200/70 blur-[0.25px] motion-safe:animate-pulse"
+                  />
+                ))}
+              </div>
+            </div>
         ) : (
-          messages.map((message) => {
+            messages.map((message) => {
             const sender = message.sender as Profile
             const isOwn = message.sender_id === user?.id
 
-          return (
-            <div
-              key={message.id}
-              className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`flex flex-col ${isOwn ? 'items-end order-2' : 'items-start order-1'} max-w-[82%] sm:max-w-[70%]`}
-              >
-                {!isOwn && sender && (
-                  <div className="text-xs text-gray-500 mb-1">{sender.display_name}</div>
-                )}
+              return (
                 <div
-                  className={`rounded-lg px-4 py-2 w-fit max-w-full break-words ${
-                    isOwn
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-white text-gray-900 border'
-                  }`}
+                  key={message.id}
+                  className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
                 >
-                    <p className="text-sm">{message.content}</p>
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    {format(new Date(message.created_at), 'HH:mm')}
+                  <div
+                    className={`group/message flex max-w-[82%] flex-col ${isOwn ? 'order-2 items-end' : 'order-1 items-start'} sm:max-w-[70%]`}
+                  >
+                    {!isOwn && sender && (
+                      <div className="mb-1 text-xs font-medium text-slate-500">{sender.display_name}</div>
+                    )}
+                    <div
+                      className={`w-fit max-w-full break-words rounded-2xl px-4 py-2 text-[0.95rem] font-medium shadow-sm transition ${
+                        isOwn
+                          ? 'bg-primary-600 text-white shadow-[0_15px_35px_-18px_rgba(99,102,241,0.65)]'
+                          : 'bg-white text-slate-900 ring-1 ring-slate-100'
+                      }`}
+                    >
+                      <p>{message.content}</p>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400 opacity-0 transition group-hover/message:opacity-100">
+                      {format(new Date(message.created_at), 'p')}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          })
+              )
+            })
         )}
+        </div>
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={sendMessage} className="mt-4 flex gap-2">
-        <input
-          type="text"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder="Type a message..."
-          className="flex-1 input-field"
-          disabled={sending}
-        />
-        <button
-          type="submit"
-          disabled={sending || !newMessage.trim()}
-          className="btn-primary"
-        >
-          Send
-        </button>
+      <form onSubmit={sendMessage} className="space-y-1.5">
+        <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-4 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),_0_12px_30px_-20px_rgba(24,39,75,0.35)]">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type a message..."
+            className="flex-1 border-none bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none disabled:opacity-50"
+            disabled={sending}
+          />
+          <button
+            type="submit"
+            disabled={sending || !newMessage.trim()}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary-600 text-white transition hover:bg-primary-500 disabled:opacity-40"
+            aria-label="Send message"
+          >
+            <SendHorizonal className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-right text-xs text-slate-400">Press Enter to send</p>
       </form>
     </div>
   )
