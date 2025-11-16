@@ -1,7 +1,7 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { notFound } from 'next/navigation'
 import { ProfileCard } from '@/components/ProfileCard'
-import { JamCard } from '@/components/JamCard'
+import { JamOverviewCard } from '@/components/JamsExperience'
 import { StartDMButton } from '@/components/StartDMButton'
 import { ConnectButton } from '@/components/ConnectButton'
 import { toJam, toProfile } from '@/lib/transformers'
@@ -81,9 +81,13 @@ export default async function ProfilePage({ params }: { params: any }) {
         {hostedJams.length > 0 && (
           <div className="mt-8">
             <h2 className="text-2xl font-semibold mb-4">Hosted Jams</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               {hostedJams.map((jam) => (
-                <JamCard key={jam.id} jam={jam} />
+                <JamOverviewCard
+                  key={jam.id}
+                  jam={jam}
+                  participation={viewer?.id === profile.id ? 'hosting' : 'open'}
+                />
               ))}
             </div>
           </div>

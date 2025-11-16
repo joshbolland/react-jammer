@@ -67,6 +67,17 @@ const CITY_GROUPS: Record<
   ],
 }
 
+const UK_CITIES: City[] = [
+  { name: 'London', country: 'UK', lat: 51.5074, lng: -0.1278 },
+  { name: 'Manchester', country: 'UK', lat: 53.4808, lng: -2.2426 },
+  { name: 'Birmingham', country: 'UK', lat: 52.4862, lng: -1.8904 },
+  { name: 'Bristol', country: 'UK', lat: 51.4545, lng: -2.5879 },
+  { name: 'Glasgow', country: 'UK', lat: 55.8642, lng: -4.2518 },
+]
+
+// Temporarily restrict seeding to UK cities; set to null to restore global distribution.
+const LOCATION_OVERRIDE: City[] | null = UK_CITIES
+
 type LocationGroup = keyof typeof CITY_GROUPS
 
 const FIRST_NAMES = [
@@ -496,7 +507,8 @@ async function seed() {
       const genres = randomElements(archetype.genrePool, genreCount)
       const experience = randomElement(archetype.experiencePool)
       const availability = randomElement(archetype.availabilityOptions)
-      const location = randomElement(CITY_GROUPS[archetype.locationGroup])
+      const locationPool = LOCATION_OVERRIDE ?? CITY_GROUPS[archetype.locationGroup]
+      const location = randomElement(locationPool)
 
       const bio = fillTemplate(randomElement(archetype.bioTemplates), {
         persona: archetype.persona,

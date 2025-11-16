@@ -496,7 +496,7 @@ function HistorySection({
   )
 }
 
-function JamOverviewCard({
+export function JamOverviewCard({
   jam,
   participation,
   suggestion,
@@ -754,7 +754,7 @@ function AuroraCardShell({
   href,
   statusPulse,
 }: AuroraCardShellProps) {
-  return (
+  const card = (
     <article
       className={`group relative overflow-hidden rounded-[30px] border border-white/60 bg-gradient-to-br ${accent.background} p-5 shadow-[0_45px_120px_-70px_rgba(79,70,229,0.45)] transition duration-200 ease-out hover:-translate-y-1`}
     >
@@ -782,19 +782,19 @@ function AuroraCardShell({
         )}
         {chips}
         {footer}
-        {href && (
-          <div>
-            <Link
-              href={href}
-              className="inline-flex items-center text-sm font-semibold text-primary-600 transition hover:text-primary-700"
-            >
-              View details
-              <span className="ml-1">→</span>
-            </Link>
-          </div>
-        )}
       </div>
     </article>
+  )
+
+  if (!href) return card
+
+  return (
+    <Link
+      href={href}
+      className="group block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-200 focus-visible:ring-offset-4 focus-visible:ring-offset-transparent"
+    >
+      {card}
+    </Link>
   )
 }
 

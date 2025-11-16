@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { JamForm } from './JamForm'
 import { Plus, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -17,6 +18,7 @@ export function CreateJamModal({
   variant = 'default',
 }: CreateJamModalProps) {
   const [open, setOpen] = useState(autoOpen)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
   const autoOpenHandledRef = useRef(autoOpen)
   const isCompact = variant === 'compact'
@@ -33,6 +35,10 @@ export function CreateJamModal({
   const iconClasses = isCompact
     ? 'inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-50 text-primary-600 shadow-[0_18px_40px_-26px_rgba(79,70,229,0.55)] transition-transform duration-200 group-hover:scale-105'
     : 'inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-primary-600 shadow-[0_18px_40px_-22px_rgba(79,70,229,0.8)] transition-transform duration-200 group-hover:scale-105'
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     if (autoOpen) {
@@ -94,40 +100,45 @@ export function CreateJamModal({
         {buttonLabel}
       </button>
 
-      {open && (
-        <div className="create-jam-overlay">
-          <div className="create-jam-backdrop" onClick={closeModal} aria-hidden="true" />
-          <div
-            className="create-jam-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="create-jam-title"
-            aria-describedby="create-jam-description"
-          >
-            <button
-              type="button"
-              onClick={closeModal}
-              className="absolute right-6 top-6 rounded-full border border-slate-200/70 bg-white/70 p-2 text-slate-500 transition-colors hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
-              aria-label="Close create jam form"
-            >
-              <X className="h-5 w-5" />
-            </button>
+      {open
+        ? mounted
+          ? createPortal(
+              <div className="create-jam-overlay">
+                <div className="create-jam-backdrop" onClick={closeModal} aria-hidden="true" />
+                <div
+                  className="create-jam-modal"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="create-jam-title"
+                  aria-describedby="create-jam-description"
+                >
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="absolute right-6 top-6 rounded-full border border-slate-200/70 bg-white/70 p-2 text-slate-500 transition-colors hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
+                    aria-label="Close create jam form"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
 
-            <div className="mb-6 pr-10">
-              <h2 id="create-jam-title" className="text-2xl font-semibold text-slate-900">
-                Create a Jam
-              </h2>
-              <p id="create-jam-description" className="text-sm text-slate-500">
-                Invite musicians to join your next session.
-              </p>
-            </div>
+                  <div className="mb-6 pr-10">
+                    <h2 id="create-jam-title" className="text-2xl font-semibold text-slate-900">
+                      Create a Jam
+                    </h2>
+                    <p id="create-jam-description" className="text-sm text-slate-500">
+                      Invite musicians to join your next session.
+                    </p>
+                  </div>
 
-            <div className="relative">
-              <JamForm onSuccess={handleSuccess} />
-            </div>
-          </div>
-        </div>
-      )}
+                  <div className="relative">
+                    <JamForm onSuccess={handleSuccess} />
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )
+          : null
+        : null}
     </>
   )
 }

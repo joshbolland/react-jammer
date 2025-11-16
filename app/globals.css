@@ -273,7 +273,7 @@
   }
 
   .create-jam-overlay {
-    @apply fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto px-4 py-10 sm:py-16;
+    @apply fixed inset-0 z-[1200] flex items-center justify-center overflow-y-auto px-4 py-10 sm:py-16;
   }
 
   .create-jam-backdrop {
