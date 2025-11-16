@@ -106,8 +106,12 @@ export function JamsExperience({
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionPulse, setActionPulse] = useState<Record<string, 'approved' | 'declined'>>({})
 
+  const now = Date.now()
+  const visibleIncomingRequests = incomingRequests.filter((request) => isUpcomingJam(request.jamTime, now))
+  const visibleOutgoingRequests = outgoingRequests.filter((request) => isUpcomingJam(request.jamTime, now))
+
   const overviewCount = upcomingJams.length + suggestedJams.length
-  const requestsCount = incomingRequests.length + outgoingRequests.length
+  const requestsCount = visibleIncomingRequests.length + visibleOutgoingRequests.length
   const historyCount = historyJams.length
   const hasHistory = historyCount > 0
 
@@ -122,7 +126,7 @@ export function JamsExperience({
     return base
   }, [overviewCount, requestsCount, hasHistory, historyCount])
 
-  const activeRequests = requestSegment === 'incoming' ? incomingRequests : outgoingRequests
+  const activeRequests = requestSegment === 'incoming' ? visibleIncomingRequests : visibleOutgoingRequests
 
   const handleOpenCreate = () => {
     router.push('/jams?create=1')
@@ -254,8 +258,8 @@ export function JamsExperience({
               <RequestsSection
                 requestSegment={requestSegment}
                 setRequestSegment={setRequestSegment}
-                incomingRequests={incomingRequests}
-                outgoingRequests={outgoingRequests}
+                incomingRequests={visibleIncomingRequests}
+                outgoingRequests={visibleOutgoingRequests}
                 activeRequests={activeRequests}
                 processingKey={processingKey}
                 actionError={actionError}
@@ -905,6 +909,13 @@ function formatJoined(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
   return `Requested ${formatDistanceToNow(date, { addSuffix: true })}`
+}
+
+function isUpcomingJam(jamTime: string | null, now: number = Date.now()) {
+  if (!jamTime) return true
+  const jamDate = new Date(jamTime)
+  if (Number.isNaN(jamDate.getTime())) return true
+  return jamDate.getTime() >= now
 }
 
 function getAccentForJam(primaryGenre?: Genre | null): AccentTokens {
