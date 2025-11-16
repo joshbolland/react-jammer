@@ -756,11 +756,11 @@ function AuroraCardShell({
 }: AuroraCardShellProps) {
   const card = (
     <article
-      className={`group relative overflow-hidden rounded-[30px] border border-white/60 bg-gradient-to-br ${accent.background} p-5 shadow-[0_45px_120px_-70px_rgba(79,70,229,0.45)] transition duration-200 ease-out hover:-translate-y-1`}
+      className={`group relative h-full overflow-hidden rounded-[30px] border border-white/60 bg-gradient-to-br ${accent.background} p-5 shadow-[0_45px_120px_-70px_rgba(79,70,229,0.45)] transition duration-200 ease-out hover:-translate-y-1`}
     >
-      <div className="relative flex flex-col gap-4">
+      <div className="relative flex h-full flex-col gap-4">
         <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
+          <div className="flex min-w-0 items-start gap-3">
             {avatar ? <AvatarBubble avatar={avatar} /> : null}
             <div>
               <span
@@ -772,7 +772,7 @@ function AuroraCardShell({
               {subtitle ? <p className="mt-1 text-sm text-slate-600">{subtitle}</p> : null}
             </div>
           </div>
-          <div className="text-right text-sm text-slate-500">
+          <div className="flex-none whitespace-nowrap text-right text-sm text-slate-500">
             {metaPrimary && <p className="font-semibold text-slate-900">{metaPrimary}</p>}
             {metaSecondary && <p>{metaSecondary}</p>}
           </div>
@@ -780,8 +780,12 @@ function AuroraCardShell({
         {reasonLine && (
           <p className="text-xs uppercase tracking-[0.3em] text-slate-400">{reasonLine}</p>
         )}
-        {chips}
-        {footer}
+        {chips || footer ? (
+          <div className="mt-auto flex flex-col gap-3">
+            {chips}
+            {footer}
+          </div>
+        ) : null}
       </div>
     </article>
   )
@@ -791,7 +795,7 @@ function AuroraCardShell({
   return (
     <Link
       href={href}
-      className="group block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-200 focus-visible:ring-offset-4 focus-visible:ring-offset-transparent"
+      className="group block h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-200 focus-visible:ring-offset-4 focus-visible:ring-offset-transparent"
     >
       {card}
     </Link>
