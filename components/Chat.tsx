@@ -10,9 +10,10 @@ import { ConnectButton } from './ConnectButton'
 interface ChatProps {
   roomType: 'dm' | 'jam'
   roomId: string
+  className?: string
 }
 
-export function Chat({ roomType, roomId }: ChatProps) {
+export function Chat({ roomType, roomId, className }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [newMessage, setNewMessage] = useState('')
@@ -166,7 +167,7 @@ export function Chat({ roomType, roomId }: ChatProps) {
   }
 
   return (
-    <div className="flex flex-col h-96">
+    <div className={['flex flex-col h-96', className].filter(Boolean).join(' ')}>
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 rounded-lg">
         {messages.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
