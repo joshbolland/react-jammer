@@ -65,7 +65,7 @@ export function MessagesExperience({ dms, initialSelectedId, currentUserId }: Me
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Messages</p>
           <h1 className="mt-2 text-3xl font-semibold text-slate-900">No conversations yet</h1>
           <p className="mt-3 text-sm text-slate-500">
-            Start connecting with other musicians to see your threads here.
+            Start connecting with other musicians to see your threads here!
           </p>
         </div>
       </div>
@@ -77,14 +77,14 @@ export function MessagesExperience({ dms, initialSelectedId, currentUserId }: Me
     selectedDm?.otherUser?.is_online
       ? null
       : selectedDm?.otherUser?.last_active_at
-      ? `Last active ${formatDistanceToNow(new Date(selectedDm.otherUser.last_active_at), {
+        ? `Last active ${formatDistanceToNow(new Date(selectedDm.otherUser.last_active_at), {
           addSuffix: true,
         })}`
-      : selectedDm?.lastMessage
-      ? `Last message ${formatDistanceToNow(new Date(selectedDm.lastMessage.created_at), {
-          addSuffix: true,
-        })}`
-      : 'Start the conversation'
+        : selectedDm?.lastMessage
+          ? `Last message ${formatDistanceToNow(new Date(selectedDm.lastMessage.created_at), {
+            addSuffix: true,
+          })}`
+          : 'Start the conversation'
 
   return (
     <div className="relative mx-auto w-full px-4 sm:px-6 py-8 sm:py-10">
