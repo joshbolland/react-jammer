@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Loader2, Sparkles } from 'lucide-react'
+import { Check, Loader2, Sparkles, X } from 'lucide-react'
 import type { ConnectionStatus } from '@/lib/types'
 import { showToast } from '@/lib/toast'
 import { useAuth } from './AuthProvider'
@@ -37,6 +37,8 @@ export function ConnectButton({
   const [loading, setLoading] = useState(false)
   const [statusLoading, setStatusLoading] = useState(!initialStatus || initialStatus === 'none')
   const [rippleKey, setRippleKey] = useState(0)
+  const [confirmingDisconnect, setConfirmingDisconnect] = useState(false)
+  const [hovering, setHovering] = useState(false)
   const isSelf = status === 'self' || user?.id === targetUserId
 
   const fetchStatus = useCallback(async () => {
@@ -181,6 +183,11 @@ export function ConnectButton({
     return label
   }, [status, label, isSelf])
 
+  const hoverAwareLabel = useMemo(() => {
+    if (status === 'connected' && hovering) return 'Disconnect'
+    return buttonLabel
+  }, [buttonLabel, status, hovering])
+
   const sizeClasses =
     size === 'sm'
       ? 'text-xs px-3 py-1.5 rounded-full'
@@ -203,17 +210,18 @@ export function ConnectButton({
     }
   }, [status, isSelf])
 
-  const icon = (() => {
+  const icon = useMemo(() => {
+    if (status === 'connected' && hovering) return <X className="h-4 w-4 text-rose-500" />
     if (status === 'connected') return <Check className="h-4 w-4 text-primary-500" />
     if (status === 'incoming') return <Sparkles className="h-4 w-4" />
     if (loading) return <Loader2 className="h-4 w-4 animate-spin" />
     return <Sparkles className="h-4 w-4" />
-  })()
+  }, [status, hovering, loading])
 
   const disabled = loading || statusLoading || isSelf
   const buttonAction = () => {
     if (status === 'connected') {
-      removeConnection('disconnect')
+      setConfirmingDisconnect(true)
     } else if (status === 'incoming') {
       acceptRequest()
     } else if (status === 'pending') {
@@ -243,14 +251,29 @@ export function ConnectButton({
         ].join(' ')}
         disabled={disabled || status === 'pending'}
         onClick={handleButtonClick}
-        title={status === 'connected' ? 'Connected · Click to remove' : undefined}
+        onMouseEnter={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
+        title={
+          status === 'connected'
+            ? 'Connected — click to disconnect.'
+            : status === 'pending'
+            ? 'Request pending — use Cancel below to withdraw.'
+            : undefined
+        }
+        aria-label={
+          status === 'connected'
+            ? 'Connected — click to disconnect.'
+            : status === 'pending'
+            ? 'Request pending — use Cancel below to withdraw.'
+            : undefined
+        }
       >
         <span
           key={rippleKey}
           className="pointer-events-none absolute inset-0 rounded-full border border-white/20 opacity-0 connect-button-ripple"
         />
         {icon}
-        <span>{buttonLabel}</span>
+        <span>{hoverAwareLabel}</span>
       </button>
       {status === 'pending' && connectionId ? (
         <button
@@ -266,6 +289,36 @@ export function ConnectButton({
           Cancel request
         </button>
       ) : null}
+      {confirmingDisconnect && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-slate-900">Disconnect from {targetDisplayName}?</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              You’ll stop seeing their updates here. You can always reconnect if you change your mind.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                onClick={() => setConfirmingDisconnect(false)}
+              >
+                Keep connection
+              </button>
+              <button
+                type="button"
+                className="rounded-full bg-gradient-to-r from-primary-500 to-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_18px_40px_-26px_rgba(112,66,255,0.8)]"
+                onClick={() => {
+                  setConfirmingDisconnect(false)
+                  removeConnection('disconnect')
+                }}
+                disabled={loading}
+              >
+                Disconnect
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

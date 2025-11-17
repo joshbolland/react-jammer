@@ -35,6 +35,7 @@ export function toProfile(value: unknown): Profile | null {
     instruments: (profile.instruments ?? []) as Profile['instruments'],
     genres: (profile.genres ?? []) as Profile['genres'],
     experience_level: profile.experience_level as Profile['experience_level'],
+    is_online: profile.is_online ?? null,
     links: {
       spotify: rawLinks.spotify ?? null,
       youtube: rawLinks.youtube ?? null,

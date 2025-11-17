@@ -1,11 +1,10 @@
 'use client'
 
+import Image from 'next/image'
 import type { KeyboardEvent } from 'react'
 import { format } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { Jam, type Genre, type Instrument } from '@/lib/types'
-import { getInstrumentIcon } from './InstrumentIcon'
-import { ConnectButton } from './ConnectButton'
 
 type JamAccent = {
   background: string
@@ -219,15 +218,18 @@ interface JamCardProps {
 const participationMeta: Record<JamParticipation, { label: string; tone: string }> = {
   hosting: {
     label: "You're hosting",
-    tone: 'bg-gradient-to-r from-primary-500/90 to-primary-600 text-white shadow-[0_12px_28px_-16px_rgba(84,63,255,0.55)]',
+    tone:
+      'bg-white/90 px-3 py-1 text-primary-700 ring-1 ring-primary-100/80 shadow-[0_10px_40px_-26px_rgba(84,63,255,0.45)] backdrop-blur',
   },
   attending: {
     label: "You're in",
-    tone: 'bg-gradient-to-r from-primary-500/80 to-primary-600/90 text-white shadow-[0_12px_28px_-16px_rgba(84,63,255,0.55)]',
+    tone:
+      'bg-white/90 px-3 py-1 text-emerald-700 ring-1 ring-emerald-100/80 shadow-[0_10px_40px_-26px_rgba(16,185,129,0.4)] backdrop-blur',
   },
   pending: {
     label: 'Request pending',
-    tone: 'bg-gradient-to-r from-amber-400/90 to-amber-500 text-white shadow-[0_12px_28px_-16px_rgba(251,191,36,0.45)]',
+    tone:
+      'bg-white/90 px-3 py-1 text-amber-700 ring-1 ring-amber-100/80 shadow-[0_10px_40px_-26px_rgba(251,191,36,0.4)] backdrop-blur',
   },
 }
 
@@ -235,16 +237,23 @@ export function JamCard({ jam, participation }: JamCardProps) {
   const router = useRouter()
   const jamDate = new Date(jam.jam_time)
   const isPast = jamDate < new Date()
-  const locationLine = [jam.city, jam.country].filter(Boolean).join(', ')
+  const locationLine = [jam.city, jam.country].filter(Boolean).join(', ') || 'Location TBA'
   const primaryInstrument = jam.desired_instruments[0]
   const primaryGenre = jam.host?.genres?.[0]
   const accent = getJamAccent(primaryGenre, primaryInstrument)
-  const hostName = jam.host?.display_name
-  const instrumentDisplay = jam.desired_instruments.slice(0, 3)
-  const remainingInstrumentCount = Math.max(jam.desired_instruments.length - instrumentDisplay.length, 0)
+  // Use || so empty strings fall back to avatar/gradient
+  const coverImage = jam.cover_image_url || jam.host?.avatar_url || null
+  const avatarSources = (jam.host?.avatar_url ? [jam.host.avatar_url] : []).slice(0, 3)
+  const remainingSlots = Math.max(jam.max_attendees - avatarSources.length, 0)
+  const timeBadge = format(jamDate, 'EEE • h:mm a')
+  const dateLine = format(jamDate, 'EEE, MMM d • h:mm a')
   const participationBadge = participation
     ? participationMeta[participation]
-    : { label: 'Open spots', tone: 'bg-gradient-to-r from-primary-500/80 to-primary-600/90 text-white shadow-[0_12px_28px_-16px_rgba(84,63,255,0.5)]' }
+    : {
+        label: 'Open spots',
+        tone:
+          'bg-white/90 px-3 py-1 text-slate-800 ring-1 ring-white/70 shadow-[0_10px_34px_-22px_rgba(15,23,42,0.45)] backdrop-blur',
+      }
 
   const handleCardClick = () => {
     router.push(`/jams/${jam.id}`)
@@ -257,122 +266,75 @@ export function JamCard({ jam, participation }: JamCardProps) {
     }
   }
 
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[JamCard] cover', { id: jam.id, title: jam.title, cover: jam.cover_image_url })
+  }
+
   return (
     <article
       className={[
-        'group relative flex h-full flex-col overflow-hidden rounded-[28px] border border-white/70 p-6 text-left shadow-[0_8px_28px_rgba(84,63,255,0.08)] backdrop-blur-[6px] transition duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-200 md:p-7 xl:p-8',
-        accent.background,
+        'group relative isolate aspect-[16/10] w-full cursor-pointer overflow-hidden rounded-[30px] border border-white/70 bg-gradient-to-b from-white/70 via-white/60 to-white/80 text-left shadow-[0_28px_80px_-70px_rgba(15,23,42,0.55)] backdrop-blur transition duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-200',
         isPast
-          ? 'opacity-80 saturate-[0.92]'
-          : 'group-hover:-translate-y-0.5 group-hover:shadow-[0_12px_36px_rgba(84,63,255,0.12)]',
+          ? 'opacity-80 saturate-[0.94]'
+          : 'hover:-translate-y-1 hover:shadow-[0_32px_98px_-78px_rgba(15,23,42,0.7)]',
       ].join(' ')}
       role="button"
       tabIndex={0}
       onClick={handleCardClick}
       onKeyDown={handleKeyDown}
     >
-      <span
-        className={[
-          'absolute left-6 top-6 z-30 inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.04em] text-white md:left-7 md:top-7 xl:left-8 xl:top-8',
-          participationBadge.tone,
-        ].join(' ')}
-      >
-        {participationBadge.label}
-      </span>
-      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-        <div
-          className="genre-motion-layer animate-genre-ambient opacity-40 blur-[0.5px] transition-opacity duration-500 group-hover:opacity-70"
-          style={{ backgroundImage: accent.motion }}
-        />
-        <div className="absolute inset-0 bg-white/10" />
-      </div>
-      <div
-        className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-        aria-hidden="true"
-      >
-        <div className={`absolute -left-24 top-0 h-48 w-48 rounded-full blur-[120px] mix-blend-screen ${accent.glow}`} />
-        <div className={`absolute right-0 -bottom-24 h-52 w-52 rounded-full blur-[140px] mix-blend-screen ${accent.glow}`} />
+      <div className="absolute inset-0" aria-hidden="true">
+        <div className={`absolute inset-0 ${coverImage ? '' : accent.background}`} />
+        {coverImage && (
+          <img
+            src={coverImage}
+            alt={jam.title}
+            className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.03] group-hover:brightness-[1.05]"
+            loading="lazy"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-900/5 via-slate-900/10 to-slate-900/45" />
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent via-slate-900/18 to-slate-900/40" />
+        <div className={`absolute inset-x-[-22%] bottom-[-28%] h-52 blur-3xl ${accent.glow}`} />
       </div>
 
-      <div className="relative z-30 flex min-h-full flex-col gap-6 pt-12 pointer-events-none">
-        <div className="jam-card-layout flex-1">
-          <div className="flex flex-col gap-2">
-            <h3 className="line-clamp-2 font-display text-[22px] font-semibold leading-tight text-slate-900 md:text-[24px]">
-              {jam.title}
-            </h3>
-            {jam.description && (
-              <p className="jam-card-description text-base text-slate-700/90">
-                {jam.description}
-              </p>
-            )}
-            {hostName && participation !== 'hosting' && jam.host?.id && (
-              <div className="flex flex-wrap items-center gap-3 pt-1">
-                <div
-                  className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] ${accent.badge}`}
-                >
-                  Hosted by {hostName}
-                </div>
-                <div
-                  className="relative z-40"
-                  onClick={(event) => event.stopPropagation()}
-                  onKeyDown={(event) => event.stopPropagation()}
-                >
-                  <ConnectButton
-                    targetUserId={jam.host.id}
-                    targetDisplayName={hostName}
-                    initialStatus="none"
-                    contextJamId={jam.id}
-                    label="Jam together"
-                    size="sm"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-          <div
-            className="mt-4 border-t border-white/50 pt-4 text-left text-slate-600 lg:mt-0 lg:rounded-[24px] lg:border lg:border-white/50 lg:bg-gradient-to-b lg:from-white/70 lg:via-white/30 lg:to-white/60 lg:p-5 lg:text-right lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] lg:backdrop-blur"
-            aria-label="Date and location"
+      <div className="relative z-10 flex h-full flex-col justify-between">
+        <div className="flex items-start justify-between gap-2 px-4 pt-4">
+          <span
+            className={`inline-flex items-center rounded-full text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700 ${participationBadge.tone}`}
           >
-            <div className="space-y-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-                  When
-                </p>
-                <p className="mt-1 text-base font-semibold text-slate-900">{format(jamDate, 'EEE, MMM d')}</p>
-                <p className="text-sm font-semibold text-slate-800">{format(jamDate, 'h:mm a')}</p>
-              </div>
-              {locationLine && (
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-                    Where
-                  </p>
-                  <p className="mt-1 text-base font-semibold text-slate-900">{locationLine}</p>
-                </div>
-              )}
-            </div>
-          </div>
+            {participationBadge.label}
+          </span>
+          <span className="inline-flex items-center rounded-full bg-slate-900/45 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/90 ring-1 ring-white/30 backdrop-blur-sm">
+            {timeBadge}
+          </span>
         </div>
 
-        <div className="mt-auto space-y-4">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
-              Looking for
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {instrumentDisplay.map((instrument) => (
+        <div className="px-3 pb-3">
+          <div className="flex items-center gap-3 rounded-[20px] border border-white/70 bg-white/85 px-4 py-3 shadow-[0_18px_60px_-42px_rgba(15,23,42,0.6)] backdrop-blur-md">
+            <div className="min-w-0 flex-1 space-y-1">
+              <h3 className="truncate font-display text-lg font-semibold text-slate-900 md:text-[20px]">{jam.title}</h3>
+              <p className="truncate text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-400">{locationLine}</p>
+              <p className="truncate text-sm font-medium text-slate-700">{dateLine}</p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {avatarSources.map((src, index) => (
                 <span
-                  key={instrument}
-                  className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1.5 text-[13px] font-medium text-slate-700/90 shadow-sm backdrop-blur-md"
+                  key={`${src}-${index}`}
+                  className="relative block h-9 w-9 overflow-hidden rounded-full border border-white/80 bg-white/80 shadow-sm"
+                  style={{ marginLeft: index === 0 ? 0 : -10 }}
                 >
-                  <span className="text-primary-500">
-                    {getInstrumentIcon(instrument, { className: 'h-4 w-4', strokeWidth: 1.5 })}
-                  </span>
-                  {formatInstrument(instrument)}
+                  <Image src={src} alt="Participant" fill className="object-cover" sizes="48px" unoptimized />
                 </span>
               ))}
-              {remainingInstrumentCount > 0 && (
-                <span className="inline-flex items-center rounded-full border border-dashed border-white/60 px-3 py-1.5 text-[12px] font-semibold uppercase tracking-[0.3em] text-slate-500">
-                  +{remainingInstrumentCount} more
+              {remainingSlots > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-600 ring-1 ring-white/70">
+                  +{remainingSlots} spots
+                </span>
+              )}
+              {avatarSources.length === 0 && remainingSlots === 0 && (
+                <span className="inline-flex items-center rounded-full bg-slate-900/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-600 ring-1 ring-white/70">
+                  {participationBadge.label}
                 </span>
               )}
             </div>
@@ -381,8 +343,4 @@ export function JamCard({ jam, participation }: JamCardProps) {
       </div>
     </article>
   )
-}
-
-function formatInstrument(value: string) {
-  return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
 }

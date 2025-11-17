@@ -1,12 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { format, formatDistanceToNow } from 'date-fns'
 import type { Jam, Genre, Instrument } from '@/lib/types'
-import type { JamParticipation } from './JamCard'
+import { JamCard, type JamParticipation } from './JamCard'
 import { CreateJamModal } from './CreateJamModal'
 import { getInstrumentIcon } from './InstrumentIcon'
 
@@ -126,6 +126,16 @@ export function JamsExperience({
     return base
   }, [overviewCount, requestsCount, hasHistory, historyCount])
 
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[JamsExperience] upcomingJams cover urls', upcomingJams.map((jam) => ({
+        id: jam.id,
+        title: jam.title,
+        cover_image_url: jam.cover_image_url,
+      })))
+    }
+  }, [upcomingJams])
+
   const activeRequests = requestSegment === 'incoming' ? visibleIncomingRequests : visibleOutgoingRequests
 
   const handleOpenCreate = () => {
@@ -199,27 +209,31 @@ export function JamsExperience({
   }
 
   return (
-    <div className="relative mx-auto max-w-6xl px-4 py-10 sm:py-12">
+    <div className="relative w-full px-4 pb-14 pt-10 sm:px-8 sm:pt-12">
       <BackgroundAura />
-      <div className="relative space-y-10">
-        <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-400">Sessions</p>
-            <h1 className="text-4xl font-semibold text-slate-900">Jams</h1>
-            <p className="mt-3 max-w-xl text-base text-slate-600">
-              Keep every session in one place so you can host, respond, and explore without the clutter.
-            </p>
-          </div>
-          <div className="md:self-start">
-            <CreateJamModal variant="compact" autoOpen={autoOpenCreate} />
-          </div>
-        </header>
+      <div className="pointer-events-none absolute inset-x-0 -top-32 z-[-1] flex justify-center">
+        <div className="h-72 w-[min(1800px,96%)] rounded-[999px] bg-gradient-to-r from-primary-200/40 via-white/60 to-sky-200/40 blur-3xl" />
+      </div>
 
-        <section className="rounded-[40px] border border-white/60 bg-white/90 p-6 shadow-[0_60px_160px_-80px_rgba(79,70,229,0.45)] backdrop-blur">
+      <div className="relative space-y-8">
+        <header className="flex flex-col gap-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-500">Jams</p>
+              <h1 className="mt-1 text-4xl font-semibold text-slate-900">Your sessions feed</h1>
+              <p className="mt-2 text-sm text-slate-600">
+                Photo-led sessions, invites, and nearby jams in one flowing feed.
+              </p>
+            </div>
+            <div className="shrink-0">
+              <CreateJamModal variant="compact" autoOpen={autoOpenCreate} />
+            </div>
+          </div>
+
           <nav
             role="tablist"
             aria-label="Jams navigation"
-            className="flex flex-wrap gap-2"
+            className="inline-flex rounded-full border border-white/50 bg-white/70 p-1 shadow-[0_20px_80px_-60px_rgba(15,23,42,0.55)] backdrop-blur"
           >
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id
@@ -232,10 +246,10 @@ export function JamsExperience({
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
                   className={[
-                    'rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-200',
+                    'relative min-w-[120px] rounded-full px-4 py-2 text-sm font-semibold transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-200',
                     isActive
-                      ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-[0_18px_40px_-28px_rgba(112,66,255,0.8)]'
-                      : 'border border-slate-200/70 bg-white/70 text-slate-600 hover:text-primary-600',
+                      ? 'bg-gradient-to-r from-primary-500/90 to-indigo-500/90 text-white shadow-[0_18px_40px_-28px_rgba(112,66,255,0.8)]'
+                      : 'text-slate-600 hover:text-primary-600',
                   ].join(' ')}
                 >
                   {tab.label}
@@ -243,42 +257,42 @@ export function JamsExperience({
               )
             })}
           </nav>
+        </header>
 
-          <div className="mt-6">
-            <TabPanel id="panel-overview" active={activeTab === 'overview'}>
-              <OverviewSection
-                upcomingJams={upcomingJams}
-                suggestedJams={suggestedJams}
+        <div className="space-y-12">
+          <TabPanel id="panel-overview" active={activeTab === 'overview'}>
+            <OverviewSection
+              upcomingJams={upcomingJams}
+              suggestedJams={suggestedJams}
+              participationMap={participationMap}
+              suggestionBlocker={suggestionBlocker}
+              onHostClick={handleOpenCreate}
+            />
+          </TabPanel>
+          <TabPanel id="panel-requests" active={activeTab === 'requests'}>
+            <RequestsSection
+              requestSegment={requestSegment}
+              setRequestSegment={setRequestSegment}
+              incomingRequests={visibleIncomingRequests}
+              outgoingRequests={visibleOutgoingRequests}
+              activeRequests={activeRequests}
+              processingKey={processingKey}
+              actionError={actionError}
+              actionPulse={actionPulse}
+              onIncomingAction={handleIncomingAction}
+              onOutgoingCancel={handleOutgoingCancel}
+              onDiscoverClick={handleDiscoverJams}
+            />
+          </TabPanel>
+          {hasHistory && (
+            <TabPanel id="panel-history" active={activeTab === 'history'}>
+              <HistorySection
+                historyJams={historyJams}
                 participationMap={participationMap}
-                suggestionBlocker={suggestionBlocker}
-                onHostClick={handleOpenCreate}
               />
             </TabPanel>
-            <TabPanel id="panel-requests" active={activeTab === 'requests'}>
-              <RequestsSection
-                requestSegment={requestSegment}
-                setRequestSegment={setRequestSegment}
-                incomingRequests={visibleIncomingRequests}
-                outgoingRequests={visibleOutgoingRequests}
-                activeRequests={activeRequests}
-                processingKey={processingKey}
-                actionError={actionError}
-                actionPulse={actionPulse}
-                onIncomingAction={handleIncomingAction}
-                onOutgoingCancel={handleOutgoingCancel}
-                onDiscoverClick={handleDiscoverJams}
-              />
-            </TabPanel>
-            {hasHistory && (
-              <TabPanel id="panel-history" active={activeTab === 'history'}>
-                <HistorySection
-                  historyJams={historyJams}
-                  participationMap={participationMap}
-                />
-              </TabPanel>
-            )}
-          </div>
-        </section>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -298,23 +312,23 @@ function OverviewSection({
   onHostClick: () => void
 }) {
   return (
-    <div className="space-y-10">
-      <div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-semibold text-slate-900">Your upcoming jams</h2>
-            <p className="text-sm text-slate-500">Sessions you&apos;re hosting or joining, all in one view.</p>
+    <div className="space-y-12">
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-500">Your upcoming jams</p>
+            <p className="text-sm text-slate-500">Hosted or joining—ready to vibe.</p>
           </div>
         </div>
         {upcomingJams.length === 0 ? (
           <EmptyState
-            title="No jams yet. Start the first one."
-            description="Host a jam to kick things off, or browse the suggestions below."
+            title="No upcoming jams. The stage is yours."
+            description="Host a jam to kick things off, or scroll suggestions below."
             ctaLabel="Host a jam"
             onCta={onHostClick}
           />
         ) : (
-          <div className="mt-6 grid gap-5 md:grid-cols-2">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {upcomingJams.map((jam) => (
               <JamOverviewCard
                 key={jam.id}
@@ -324,16 +338,12 @@ function OverviewSection({
             ))}
           </div>
         )}
-      </div>
+      </section>
 
-      <div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-semibold text-slate-900">Suggested near you</h2>
-            <p className="text-sm text-slate-500">
-              Within 25 miles and tailored to your instruments or genres.
-            </p>
-          </div>
+      <section className="space-y-4">
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-500">Suggested near you</p>
+          <p className="text-sm text-slate-500">Within 25 miles, tuned to your instruments and genres.</p>
         </div>
         {suggestionBlocker === 'location' && (
           <InlineNotice message="Add your city in your profile to unlock local matches." />
@@ -350,13 +360,13 @@ function OverviewSection({
           />
         )}
         {!suggestionBlocker && suggestedJams.length > 0 && (
-          <div className="mt-6 grid gap-5 md:grid-cols-2">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {suggestedJams.map((entry) => (
               <JamOverviewCard key={entry.jam.id} jam={entry.jam} participation="open" suggestion={entry} />
             ))}
           </div>
         )}
-      </div>
+      </section>
     </div>
   )
 }
@@ -390,12 +400,14 @@ function RequestsSection({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold text-slate-900">Requests</h2>
-        <p className="text-sm text-slate-500">Incoming invites and the jams you’ve asked to join.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-500">Requests</p>
+          <p className="text-sm text-slate-500">Invites in and requests you’ve sent.</p>
+        </div>
       </div>
 
-      <div className="inline-flex rounded-full bg-white/80 p-1 shadow-[0_15px_40px_-30px_rgba(112,66,255,0.5)] backdrop-blur">
+      <div className="inline-flex rounded-full border border-white/60 bg-white/70 p-1 shadow-[0_18px_60px_-44px_rgba(15,23,42,0.55)] backdrop-blur">
         {(['incoming', 'outgoing'] as RequestSegment[]).map((segment) => {
           const isActive = requestSegment === segment
           const count = segment === 'incoming' ? incomingRequests.length : outgoingRequests.length
@@ -407,8 +419,8 @@ function RequestsSection({
               className={[
                 'min-w-[120px] rounded-full px-5 py-2 text-sm font-semibold transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-200',
                 isActive
-                  ? 'border border-transparent bg-primary-600 text-white shadow-[0_18px_40px_-26px_rgba(112,66,255,0.65)]'
-                  : 'border border-slate-200/80 text-primary-600',
+                  ? 'bg-gradient-to-r from-primary-500 to-indigo-500 text-white shadow-[0_18px_40px_-26px_rgba(112,66,255,0.65)]'
+                  : 'text-slate-600 hover:text-primary-600',
               ].join(' ')}
               aria-pressed={isActive}
             >
@@ -440,7 +452,7 @@ function RequestsSection({
           />
         )
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {activeRequests.map((request) => {
             const requestKey =
               'requesterId' in request ? `${request.jamId}:${request.requesterId}` : `${request.jamId}:${currentUserKey}`
@@ -482,12 +494,12 @@ function HistorySection({
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold text-slate-900">Recent history</h2>
-        <p className="text-sm text-slate-500">Past jams you hosted or played recently.</p>
-      </div>
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-500">Recent history</p>
+          <p className="text-sm text-slate-500">Wrapped sessions you hosted or joined.</p>
+        </div>
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
         {historyJams.map((jam) => (
           <JamOverviewCard key={jam.id} jam={jam} participation={participationMap[jam.id] ?? 'open'} isHistory />
         ))}
@@ -507,67 +519,9 @@ export function JamOverviewCard({
   suggestion?: SuggestedJamPreview
   isHistory?: boolean
 }) {
-  const accent = getAccentForJam(jam.host?.genres?.[0])
-  const dateLabel = formatDate(jam.jam_time)
-  const locationLabel = formatLocation(jam.city, jam.country)
-  const chips = jam.desired_instruments.slice(0, 4)
-  const participationMeta = participationCopy[isHistory ? 'open' : participation]
-  const statusLabel = isHistory ? 'Wrapped' : participationMeta.label
-  const statusTone = isHistory
-    ? 'bg-slate-900/10 text-slate-900'
-    : participationMeta.tone
-
-  const reasonPieces: string[] = []
-  if (suggestion) {
-    if (suggestion.matchedInstruments.length) {
-      reasonPieces.push(`Needs ${formatList(suggestion.matchedInstruments.map(formatInstrumentLabel))}`)
-    }
-    if (suggestion.matchedGenres.length) {
-      reasonPieces.push(`Kindred ${formatList(suggestion.matchedGenres.map(capitalize))}`)
-    }
-  }
-  const reasonLine = suggestion
-    ? [suggestion.distanceMiles ? `${Math.round(suggestion.distanceMiles)} mi away` : null, reasonPieces.join(' • ') || null]
-      .filter(Boolean)
-      .join(' • ')
-    : null
-
-  const chipsNode =
-    chips.length > 0 ? (
-      <div className="mt-6">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
-          Looking for
-        </p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {chips.map((instrument) => (
-            <span
-              key={instrument}
-              className="inline-flex items-center gap-1 rounded-full border border-white/60 bg-white/80 px-3 py-1 text-xs font-medium text-slate-700"
-            >
-              <span className="text-primary-500">
-                {getInstrumentIcon(instrument, { className: 'h-4 w-4' })}
-              </span>
-              {formatInstrumentLabel(instrument)}
-            </span>
-          ))}
-        </div>
-      </div>
-    ) : null
-
-  return (
-    <AuroraCardShell
-      accent={accent}
-      statusLabel={statusLabel}
-      statusTone={statusTone}
-      title={jam.title}
-      subtitle={jam.description}
-      metaPrimary={dateLabel}
-      metaSecondary={locationLabel}
-      chips={chipsNode}
-      reasonLine={reasonLine}
-      href={`/jams/${jam.id}`}
-    />
-  )
+  const cardParticipation: JamParticipation | undefined =
+    participation === 'open' || isHistory ? undefined : participation
+  return <JamCard jam={jam} participation={cardParticipation} />
 }
 
 function RequestCard({
@@ -618,106 +572,107 @@ function RequestCard({
         : ''
 
   return (
-    <article className="relative overflow-hidden rounded-[28px] border border-white/70 bg-gradient-to-br from-white/90 via-white/80 to-white/90 p-6 shadow-[0_8px_28px_rgba(84,63,255,0.08)] backdrop-blur-[6px] transition duration-200 md:p-7 xl:p-8">
-      <span className={`absolute left-6 top-6 inline-flex items-center rounded-full px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] ${statusTone}`}>
-        {statusLabel}
-      </span>
-      <div className="relative flex flex-col gap-6 pt-10">
-        <div className="jam-card-layout">
-          <div className={isIncoming ? 'flex items-start gap-3' : undefined}>
-            {isIncoming && (
-              <AvatarBubble
-                avatar={{
-                  src: requesterAvatar,
-                  fallback: requesterName?.charAt(0) ?? 'M',
-                }}
-              />
-            )}
-            <div className="space-y-3">
-              <Link
-                href={`/jams/${request.jamId}`}
-                className="text-[22px] font-semibold leading-tight text-slate-900 transition hover:text-primary-600 md:text-[24px]"
-              >
-                {request.jamTitle}
-              </Link>
-              <p className="text-sm text-slate-700/90">{subtitle}</p>
-              {joinedLabel && (
-                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
-                  {joinedLabel}
-                </p>
+    <article className="group relative overflow-hidden rounded-[28px] border border-white/60 bg-white/80 p-5 shadow-[0_30px_90px_-70px_rgba(15,23,42,0.6)] backdrop-blur transition duration-200 hover:-translate-y-1">
+      <div className="absolute inset-0 bg-gradient-to-r from-primary-50/60 via-white/40 to-indigo-50/60 opacity-70" aria-hidden="true" />
+      <div className="relative flex flex-col gap-4">
+        <div className="flex items-start gap-3">
+          {isIncoming && (
+            <AvatarBubble
+              avatar={{
+                src: requesterAvatar,
+                fallback: requesterName?.charAt(0) ?? 'M',
+              }}
+            />
+          )}
+          <div className="min-w-0 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_10px_30px_-16px_rgba(15,23,42,0.5)] ${statusTone}`}>
+                {statusLabel}
+              </span>
+              {finalState && (
+                <span
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white ${resolvedPillTone}`}
+                >
+                  {finalState === 'approved' ? 'Accepted' : 'Declined'}
+                </span>
               )}
             </div>
-          </div>
-          <div className="mt-4 flex flex-col gap-4 border-t border-white/40 pt-4 text-left text-slate-600 lg:mt-0 lg:rounded-[24px] lg:border lg:border-white/60 lg:bg-white/60 lg:p-5 lg:text-right lg:shadow-inner lg:backdrop-blur">
-            <div className="space-y-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">When</p>
-                <p className="mt-1 text-base font-semibold text-slate-900">{dateLabel ?? 'TBD'}</p>
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Where</p>
-                <p className="mt-1 text-base font-semibold text-slate-900">{locationLabel}</p>
-              </div>
-            </div>
-            {finalState ? (
-              <span
-                className={`inline-flex items-center justify-center rounded-full px-4 py-1.5 text-sm font-semibold uppercase tracking-[0.05em] text-white shadow-[0_10px_30px_-12px_rgba(15,23,42,0.45)] transition ${resolvedPillTone} ${actionPulse[key] ? 'animate-[pulse_1.5s_ease-out]' : ''}`}
-              >
-                {finalState === 'approved' ? 'Accepted' : 'Declined'}
-              </span>
-            ) : (
-              <div className="flex flex-col gap-2 lg:items-end">
-                {isIncoming ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onIncomingAction(
-                          request.jamId,
-                          (request as IncomingJamRequestCard).requesterId,
-                          'approved'
-                        )
-                      }
-                      disabled={isProcessing}
-                      className="rounded-full bg-gradient-to-r from-primary-500 to-primary-600 px-5 py-2 text-sm font-semibold text-white shadow-[0_20px_40px_-28px_rgba(112,66,255,0.8)] transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-200 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {isProcessing ? 'Sending…' : 'Accept'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onIncomingAction(
-                          request.jamId,
-                          (request as IncomingJamRequestCard).requesterId,
-                          'declined'
-                        )
-                      }
-                      disabled={isProcessing}
-                      className="rounded-full border border-slate-200/80 px-5 py-2 text-sm font-semibold text-slate-600 transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-200 hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {isProcessing ? 'Updating…' : 'Decline'}
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => onOutgoingCancel(request.jamId)}
-                    disabled={isProcessing}
-                    className="rounded-full border border-slate-200/80 px-5 py-2 text-sm font-semibold text-slate-600 transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-200 hover:border-red-200 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isProcessing ? 'Cancelling…' : 'Cancel request'}
-                  </button>
-                )}
-              </div>
+            <Link
+              href={`/jams/${request.jamId}`}
+              className="block truncate text-lg font-semibold text-slate-900 transition hover:text-primary-600"
+            >
+              {request.jamTitle}
+            </Link>
+            <p className="text-sm text-slate-600">{subtitle}</p>
+            {joinedLabel && (
+              <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                {joinedLabel}
+              </p>
             )}
           </div>
         </div>
-        <Link
-          href={`/jams/${request.jamId}`}
-          className="relative inline-flex items-center text-sm font-semibold text-primary-600 after:absolute after:left-1/2 after:top-full after:h-0.5 after:w-0 after:-translate-x-1/2 after:bg-current after:transition-all after:duration-150 hover:after:w-full"
-        >
-          View details<span className="ml-1 text-base">→</span>
-        </Link>
+
+        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+          {dateLabel && (
+            <span className="inline-flex items-center rounded-full bg-white/80 px-3 py-1 font-semibold text-slate-800 shadow-sm">
+              {dateLabel}
+            </span>
+          )}
+          <span className="inline-flex items-center rounded-full bg-white/70 px-3 py-1 font-semibold text-slate-700 shadow-sm">
+            {locationLabel}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {finalState ? (
+            <Link
+              href={`/jams/${request.jamId}`}
+              className="text-sm font-semibold text-primary-600 underline decoration-primary-200 underline-offset-4"
+            >
+              View jam
+            </Link>
+          ) : isIncoming ? (
+            <>
+              <button
+                type="button"
+                onClick={() =>
+                  onIncomingAction(
+                    request.jamId,
+                    (request as IncomingJamRequestCard).requesterId,
+                    'approved'
+                  )
+                }
+                disabled={isProcessing}
+                className="rounded-full bg-gradient-to-r from-primary-500 to-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_16px_36px_-24px_rgba(112,66,255,0.85)] transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-200 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isProcessing ? 'Sending…' : 'Accept'}
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  onIncomingAction(
+                    request.jamId,
+                    (request as IncomingJamRequestCard).requesterId,
+                    'declined'
+                  )
+                }
+                disabled={isProcessing}
+                className="rounded-full border border-slate-200/80 px-4 py-2 text-sm font-semibold text-slate-600 transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-200 hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isProcessing ? 'Updating…' : 'Decline'}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onOutgoingCancel(request.jamId)}
+              disabled={isProcessing}
+              className="rounded-full border border-slate-200/80 px-4 py-2 text-sm font-semibold text-slate-600 transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-200 hover:border-red-200 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isProcessing ? 'Cancelling…' : 'Cancel request'}
+            </button>
+          )}
+        </div>
       </div>
     </article>
   )

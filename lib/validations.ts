@@ -46,6 +46,10 @@ export const jamSchema = z.object({
   lng: z.number().nullable().optional(),
   desired_instruments: z.array(z.enum(INSTRUMENTS as any)).min(1, 'Select at least one desired instrument'),
   max_attendees: z.number().int().min(1).max(50).default(10),
+  cover_image_url: z
+    .union([z.string().url().trim(), z.literal('')])
+    .optional()
+    .transform((val) => (val === '' ? null : val ?? null)),
 })
 
 export const messageSchema = z.object({

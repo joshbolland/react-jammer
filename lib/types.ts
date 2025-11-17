@@ -61,6 +61,7 @@ export interface Profile {
     instagram?: string | null
   }
   avatar_url: string | null
+  is_online: boolean | null
   last_active_at: string | null
   created_at: string
   updated_at: string
@@ -71,6 +72,7 @@ export interface Jam {
   host_id: string
   title: string
   description: string | null
+  cover_image_url?: string | null
   jam_time: string
   city: string | null
   country: string | null

@@ -25,6 +25,7 @@ export interface Database {
           links: Json
           avatar_url: string | null
           last_active_at: string | null
+          is_online: boolean | null
           created_at: string
           updated_at: string
         }
@@ -43,6 +44,7 @@ export interface Database {
           links?: Json
           avatar_url?: string | null
           last_active_at?: string | null
+          is_online?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -61,6 +63,7 @@ export interface Database {
           links?: Json
           avatar_url?: string | null
           last_active_at?: string | null
+          is_online?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -72,6 +75,7 @@ export interface Database {
           host_id: string
           title: string
           description: string | null
+          cover_image_url: string | null
           jam_time: string
           city: string | null
           country: string | null
@@ -87,6 +91,7 @@ export interface Database {
           host_id: string
           title: string
           description?: string | null
+          cover_image_url?: string | null
           jam_time: string
           city?: string | null
           country?: string | null
@@ -102,6 +107,7 @@ export interface Database {
           host_id?: string
           title?: string
           description?: string | null
+          cover_image_url?: string | null
           jam_time?: string
           city?: string | null
           country?: string | null
@@ -275,6 +281,7 @@ export interface Database {
           host_id: string
           title: string
           description: string | null
+          cover_image_url: string | null
           jam_time: string
           city: string | null
           country: string | null

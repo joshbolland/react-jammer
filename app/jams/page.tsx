@@ -53,12 +53,13 @@ type PastAttendanceRow = JamMemberRow & {
 }
 
 export default async function JamsPage({ searchParams }: JamsPageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
   const supabase = createSupabaseServerClient()
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     redirect('/auth')
   }
 
@@ -66,11 +67,11 @@ export default async function JamsPage({ searchParams }: JamsPageProps) {
 
   const [profileRes, membershipsRes, upcomingRes, outgoingRes, incomingRes, hostedHistoryRes, attendingHistoryRes] =
     await Promise.all([
-      supabase.from('profiles').select('*').eq('id', session.user.id).single(),
+      supabase.from('profiles').select('*').eq('id', user.id).single(),
       supabase
         .from('jam_members')
         .select('jam_id, status')
-        .eq('user_id', session.user.id)
+        .eq('user_id', user.id)
         .in('status', ['approved', 'pending']),
       supabase
         .from('jams')
@@ -81,7 +82,7 @@ export default async function JamsPage({ searchParams }: JamsPageProps) {
       supabase
         .from('jam_members')
         .select('jam_id, status, joined_at, jam:jams(id, title, jam_time, city, country)')
-        .eq('user_id', session.user.id)
+        .eq('user_id', user.id)
         .order('joined_at', { ascending: false }),
       supabase
         .from('jam_members')
@@ -89,19 +90,19 @@ export default async function JamsPage({ searchParams }: JamsPageProps) {
           'jam_id, user_id, status, joined_at, user:profiles!jam_members_user_id_fkey(id, display_name, avatar_url), jam:jams!inner(id, title, jam_time, city, country, host_id)'
         )
         .eq('status', 'pending')
-        .eq('jam.host_id', session.user.id)
+        .eq('jam.host_id', user.id)
         .order('joined_at', { ascending: false }),
       supabase
         .from('jams')
         .select('*, host:profiles!jams_host_id_fkey(*)')
         .lt('jam_time', nowIso)
-        .eq('host_id', session.user.id)
+        .eq('host_id', user.id)
         .order('jam_time', { ascending: false })
         .limit(60),
       supabase
         .from('jam_members')
         .select('jam:jams!inner(*, host:profiles!jams_host_id_fkey(*))')
-        .eq('user_id', session.user.id)
+        .eq('user_id', user.id)
         .eq('status', 'approved')
         .lt('jam.jam_time', nowIso)
         .order('jam.jam_time', { ascending: false })
@@ -123,17 +124,17 @@ export default async function JamsPage({ searchParams }: JamsPageProps) {
   )
 
   const myJams = upcomingJams
-    .filter((jam) => jam.host_id === session.user.id || membershipMap.has(jam.id))
+    .filter((jam) => jam.host_id === user.id || membershipMap.has(jam.id))
     .sort((a, b) => {
-      const aPriority = a.host_id === session.user.id ? 0 : 1
-      const bPriority = b.host_id === session.user.id ? 0 : 1
+      const aPriority = a.host_id === user.id ? 0 : 1
+      const bPriority = b.host_id === user.id ? 0 : 1
       if (aPriority !== bPriority) return aPriority - bPriority
       return new Date(a.jam_time).getTime() - new Date(b.jam_time).getTime()
     })
 
   const participationBadges: Record<string, JamParticipation> = {}
   for (const jam of myJams) {
-    if (jam.host_id === session.user.id) {
+    if (jam.host_id === user.id) {
       participationBadges[jam.id] = 'hosting'
     } else {
       const badge = membershipMap.get(jam.id)
@@ -144,7 +145,7 @@ export default async function JamsPage({ searchParams }: JamsPageProps) {
   }
 
   const myJamIds = new Set(myJams.map((jam) => jam.id))
-  const { suggestedJams, suggestionBlocker } = buildSuggestedJams(profile, upcomingJams, myJamIds, session.user.id)
+  const { suggestedJams, suggestionBlocker } = buildSuggestedJams(profile, upcomingJams, myJamIds, user.id)
 
   const outgoingRows = (outgoingRes.data ?? []) as OutgoingRow[]
   const outgoingRequests: OutgoingJamRequestCard[] = outgoingRows
@@ -209,7 +210,7 @@ export default async function JamsPage({ searchParams }: JamsPageProps) {
     .sort((a, b) => new Date(b.jam_time).getTime() - new Date(a.jam_time).getTime())
     .slice(0, 50)
 
-  const createParam = searchParams?.create
+  const createParam = resolvedSearchParams?.create
   const showCreateModal = Array.isArray(createParam) ? createParam.includes('1') : createParam === '1'
 
   return (
@@ -222,7 +223,7 @@ export default async function JamsPage({ searchParams }: JamsPageProps) {
       historyJams={historyJams}
       suggestionBlocker={suggestionBlocker}
       autoOpenCreate={showCreateModal}
-      currentUserId={session.user.id}
+      currentUserId={user.id}
     />
   )
 }

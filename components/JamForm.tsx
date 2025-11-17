@@ -4,7 +4,8 @@ import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { jamSchema } from '@/lib/validations'
 import { INSTRUMENTS } from '@/lib/types'
-import { useState, useRef } from 'react'
+import Image from 'next/image'
+import { useState, useRef, type ChangeEvent } from 'react'
 import { DateTimePicker } from './DateTimePicker'
 // Simple address autocomplete using OpenStreetMap Nominatim API
 function useAddressAutocomplete() {
@@ -46,6 +47,9 @@ interface JamFormProps {
 export function JamForm({ jam, onSuccess }: JamFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [coverError, setCoverError] = useState<string | null>(null)
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverPreview, setCoverPreview] = useState<string | null>(jam?.cover_image_url ?? null)
   const supabase = createSupabaseClient()
 
   // Address autocomplete state
@@ -73,17 +77,20 @@ export function JamForm({ jam, onSuccess }: JamFormProps) {
         address: jam.city && jam.country ? `${jam.city}, ${jam.country}` : '',
         desired_instruments: jam.desired_instruments || [],
         max_attendees: jam.max_attendees || 10,
+        cover_image_url: jam.cover_image_url || '',
       }
       : {
         jam_time: '',
         address: '',
         desired_instruments: [],
         max_attendees: 10,
+        cover_image_url: '',
       },
   })
 
   const selectedInstruments = watch('desired_instruments') || []
   const addressValue = watch('address')
+  const coverValue = watch('cover_image_url')
 
   const toggleInstrument = (instrument: string) => {
     const current = selectedInstruments
@@ -93,9 +100,80 @@ export function JamForm({ jam, onSuccess }: JamFormProps) {
     setValue('desired_instruments', updated)
   }
 
+  const extractCoverPath = (url: string) => {
+    if (!url) return null
+    try {
+      const parsed = new URL(url)
+      const marker = '/object/public/jam-covers/'
+      const index = parsed.pathname.indexOf(marker)
+      if (index === -1) return null
+      return decodeURIComponent(parsed.pathname.slice(index + marker.length))
+    } catch {
+      const [, path] = url.split('/jam-covers/')
+      return path ?? null
+    }
+  }
+
+  const handleCoverChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setCoverError(null)
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setCoverError('Please choose an image file')
+      return
+    }
+
+    const maxSizeMb = 5
+    if (file.size > maxSizeMb * 1024 * 1024) {
+      setCoverError(`Image must be smaller than ${maxSizeMb}MB`)
+      return
+    }
+
+    if (coverPreview && coverPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(coverPreview)
+    }
+
+    const objectUrl = URL.createObjectURL(file)
+    setCoverFile(file)
+    setCoverPreview(objectUrl)
+    setValue('cover_image_url', coverValue || '', { shouldDirty: true, shouldTouch: true })
+
+    event.target.value = ''
+  }
+
+  const uploadCoverThroughApi = async (file: File, oldPath: string | null) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (oldPath) {
+      formData.append('oldPath', oldPath)
+    }
+    if (jam?.id) {
+      formData.append('jamId', jam.id)
+    }
+
+    const response = await fetch('/api/jams/cover', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    })
+
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      const message =
+        typeof payload.error === 'string' && payload.error.length > 0
+          ? payload.error
+          : 'Failed to upload cover image. Please try again.'
+      throw new Error(message)
+    }
+
+    return payload as { path: string; publicUrl: string }
+  }
+
   const onSubmit = async (data: any) => {
     setLoading(true)
     setError(null)
+    setCoverError(null)
 
     try {
       const {
@@ -104,6 +182,24 @@ export function JamForm({ jam, onSuccess }: JamFormProps) {
 
       if (!user) {
         throw new Error('Not authenticated')
+      }
+
+      let cover_image_url: string | null = jam?.cover_image_url ?? null
+      const oldCoverPath = cover_image_url ? extractCoverPath(cover_image_url) : null
+
+      if (coverFile) {
+        try {
+          const uploadResult = await uploadCoverThroughApi(coverFile, oldCoverPath)
+          cover_image_url = uploadResult.publicUrl
+          setValue('cover_image_url', cover_image_url, { shouldDirty: true, shouldTouch: true })
+        } catch (uploadError: any) {
+          const friendly = uploadError?.message ?? 'Failed to upload cover image.'
+          setCoverError(friendly)
+          setError(friendly)
+          return
+        }
+      } else if (typeof data.cover_image_url === 'string') {
+        cover_image_url = data.cover_image_url || cover_image_url
       }
 
       const jamData = {
@@ -117,6 +213,7 @@ export function JamForm({ jam, onSuccess }: JamFormProps) {
         lng: data.lng || null,
         desired_instruments: data.desired_instruments,
         max_attendees: data.max_attendees,
+        cover_image_url: cover_image_url || null,
         // address is not stored in DB, just used for lookup
       }
 
@@ -235,6 +332,52 @@ export function JamForm({ jam, onSuccess }: JamFormProps) {
         {errors.description && (
           <p className="mt-1 text-sm text-red-600">{errors.description.message as string}</p>
         )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Cover image
+        </label>
+        <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-slate-200 bg-white/70 p-3">
+          <div className="flex items-start gap-3">
+            <label
+              className="flex cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-primary-600 shadow-sm hover:border-primary-200 hover:text-primary-700"
+            >
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleCoverChange}
+                className="sr-only"
+              />
+              Upload photo
+            </label>
+            <p className="text-xs text-slate-500">
+              Recommended: bright, landscape photo. Max 5MB.
+            </p>
+          </div>
+          {coverPreview ? (
+            <div className="relative h-44 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+              <Image
+                src={coverPreview}
+                alt="Cover preview"
+                fill
+                sizes="100vw"
+                className="object-cover"
+                unoptimized
+              />
+              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-900/40 to-transparent" />
+            </div>
+          ) : (
+            <div className="flex h-32 items-center justify-center rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-100 text-sm text-slate-500">
+              No cover image selected yet
+            </div>
+          )}
+          {coverError && <p className="text-sm text-red-600">{coverError}</p>}
+          {errors.cover_image_url && (
+            <p className="text-sm text-red-600">{errors.cover_image_url.message as string}</p>
+          )}
+        </div>
+        <input type="hidden" {...register('cover_image_url')} />
       </div>
 
       <div>
