@@ -14,7 +14,6 @@ interface ChatProps {
 }
 
 export function Chat({ roomType, roomId, className }: ChatProps) {
-  const containerClassName = ['flex flex-col', className ?? 'h-96'].join(' ')
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [newMessage, setNewMessage] = useState('')
@@ -23,6 +22,10 @@ export function Chat({ roomType, roomId, className }: ChatProps) {
   const lastMarkedMessageId = useRef<string | null>(null)
   const supabase = createSupabaseClient()
   const { user } = useAuth()
+  const containerClassName = useMemo(
+    () => ['flex flex-col h-96', className].filter(Boolean).join(' '),
+    [className]
+  )
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -191,11 +194,10 @@ export function Chat({ roomType, roomId, className }: ChatProps) {
                     <div className="text-xs text-gray-500 mb-1">{sender.display_name}</div>
                   )}
                   <div
-                    className={`rounded-lg px-4 py-2 w-fit max-w-full break-words ${
-                      isOwn
+                    className={`rounded-lg px-4 py-2 w-fit max-w-full break-words ${isOwn
                         ? 'bg-primary-600 text-white'
                         : 'bg-white text-gray-900 border'
-                    }`}
+                      }`}
                   >
                     <p className="text-sm">{message.content}</p>
                   </div>

@@ -23,6 +23,9 @@ export function CreateJamModal({
   const autoOpenHandledRef = useRef(autoOpen)
   const isCompact = variant === 'compact'
   const resolvedButtonClassName = buttonClassName ?? (isCompact ? '' : 'btn-primary')
+  const triggerButtonRef = useRef<HTMLButtonElement | null>(null)
+  const modalRef = useRef<HTMLDivElement | null>(null)
+  const lastActiveElementRef = useRef<HTMLElement | null>(null)
   const buttonClasses = [
     resolvedButtonClassName,
     isCompact
@@ -35,6 +38,15 @@ export function CreateJamModal({
   const iconClasses = isCompact
     ? 'inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-50 text-primary-600 shadow-[0_18px_40px_-26px_rgba(79,70,229,0.55)] transition-transform duration-200 group-hover:scale-105'
     : 'inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-primary-600 shadow-[0_18px_40px_-22px_rgba(79,70,229,0.8)] transition-transform duration-200 group-hover:scale-105'
+
+  const getFocusableElements = useCallback(() => {
+    if (!modalRef.current) return []
+    const selectors =
+      'a[href], button:not([disabled]), textarea, input, select, details, [tabindex]:not([tabindex="-1"])'
+    return Array.from(
+      modalRef.current.querySelectorAll<HTMLElement>(selectors)
+    ).filter(el => !el.hasAttribute('aria-hidden'))
+  }, [])
 
   useEffect(() => {
     setMounted(true)
@@ -61,17 +73,73 @@ export function CreateJamModal({
   }, [])
 
   useEffect(() => {
-    if (!open) return
+    if (!open || !mounted) return
+
+    const previousOverflow = document.body.style.overflow
+    const previousPaddingRight = document.body.style.paddingRight
+    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth
+
+    if (scrollBarWidth > 0) {
+      document.body.style.paddingRight = `${scrollBarWidth}px`
+    }
+    document.body.style.overflow = 'hidden'
+    lastActiveElementRef.current =
+      triggerButtonRef.current ?? (document.activeElement as HTMLElement | null)
+
+    const focusableElements = getFocusableElements()
+    if (focusableElements[0]) {
+      focusableElements[0].focus()
+    } else {
+      modalRef.current?.focus()
+    }
 
     const handleKeydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        event.preventDefault()
         closeModal()
+        return
+      }
+
+      if (event.key === 'Tab') {
+        const focusables = getFocusableElements()
+        if (focusables.length === 0) return
+
+        const first = focusables[0]
+        const last = focusables[focusables.length - 1]
+        const activeElement = document.activeElement as HTMLElement
+
+        if (event.shiftKey) {
+          if (activeElement === first || !modalRef.current?.contains(activeElement)) {
+            event.preventDefault()
+            last.focus()
+          }
+        } else {
+          if (activeElement === last || !modalRef.current?.contains(activeElement)) {
+            event.preventDefault()
+            first.focus()
+          }
+        }
       }
     }
 
-    window.addEventListener('keydown', handleKeydown)
-    return () => window.removeEventListener('keydown', handleKeydown)
-  }, [closeModal, open])
+    const handleFocus = (event: FocusEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        const focusables = getFocusableElements()
+        ;(focusables[0] ?? modalRef.current)?.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeydown)
+    document.addEventListener('focus', handleFocus, true)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeydown)
+      document.removeEventListener('focus', handleFocus, true)
+      document.body.style.overflow = previousOverflow
+      document.body.style.paddingRight = previousPaddingRight
+      lastActiveElementRef.current?.focus()
+    }
+  }, [closeModal, getFocusableElements, mounted, open])
 
   const handleSuccess = (jamId: string) => {
     setOpen(false)
@@ -93,7 +161,12 @@ export function CreateJamModal({
 
   return (
     <>
-      <button type="button" className={buttonClasses} onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        ref={triggerButtonRef}
+        className={buttonClasses}
+        onClick={() => setOpen(true)}
+      >
         <span className={iconClasses}>
           <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
         </span>
@@ -107,10 +180,12 @@ export function CreateJamModal({
                 <div className="create-jam-backdrop" onClick={closeModal} aria-hidden="true" />
                 <div
                   className="create-jam-modal"
+                  ref={modalRef}
                   role="dialog"
                   aria-modal="true"
                   aria-labelledby="create-jam-title"
                   aria-describedby="create-jam-description"
+                  tabIndex={-1}
                 >
                   <button
                     type="button"
@@ -121,17 +196,19 @@ export function CreateJamModal({
                     <X className="h-5 w-5" />
                   </button>
 
-                  <div className="mb-6 pr-10">
-                    <h2 id="create-jam-title" className="text-2xl font-semibold text-slate-900">
-                      Create a Jam
-                    </h2>
-                    <p id="create-jam-description" className="text-sm text-slate-500">
-                      Invite musicians to join your next session.
-                    </p>
-                  </div>
+                  <div className="create-jam-modal-body">
+                    <div className="mb-6 pr-[52px]">
+                      <h2 id="create-jam-title" className="text-2xl font-semibold text-slate-900">
+                        Create a Jam
+                      </h2>
+                      <p id="create-jam-description" className="text-sm text-slate-500">
+                        Invite musicians to join your next session.
+                      </p>
+                    </div>
 
-                  <div className="relative">
-                    <JamForm onSuccess={handleSuccess} />
+                    <div className="relative">
+                      <JamForm onSuccess={handleSuccess} />
+                    </div>
                   </div>
                 </div>
               </div>,
